@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bank Details - SecureSwap</title>
+    <link rel="shortcut icon" sizes="64x64" href="./src/images/fav_logo.png" type="image/x-icon">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+      /* Lucide Icons Font Face */
+      @font-face { font-family: 'LucideIcons'; src: url(https://cdn.jsdelivr.net/npm/lucide-static@latest/font/Lucide.ttf) format('truetype'); }
+      .lucide { font-family: 'LucideIcons'; font-style: normal; font-weight: normal; font-variant: normal; text-rendering: auto; line-height: 1; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; display: inline-block; }
+      /* Smooth Scroll */
+      html { scroll-behavior: smooth; }
+      /* Dark Mode Toggle */
+      .theme-switch-wrapper { display: flex; align-items: center; gap: 8px; }
+      .theme-switch { display: inline-block; height: 24px; position: relative; width: 44px; }
+      .theme-switch input { display:none; }
+      .slider { background-color: #ccc; bottom: 0; cursor: pointer; left: 0; position: absolute; right: 0; top: 0; transition: .4s; }
+      .slider:before { background-color: #fff; bottom: 4px; content: ""; height: 16px; left: 4px; position: absolute; transition: .4s; width: 16px; }
+      input:checked + .slider { background-color: #3B82F6; }
+      input:checked + .slider:before { transform: translateX(20px); }
+      .slider.round { border-radius: 24px; } .slider.round:before { border-radius: 50%; }
+      html.dark .dark-mode-icon { color: #F59E0B; } html:not(.dark) .light-mode-icon { color: #F59E0B; }
+      /* Base body styles */
+      body { font-family: 'Inter', sans-serif; }
+       /* Form message styling */
+      .form-message { transition: opacity 0.3s ease-in-out; }
+    </style>
+
+    <script type="text/tailwindcss-config">
+      {
+        darkMode: 'class',
+        theme: { extend: { fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'], }, } }
+      }
+    </script>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <script>
+      (function() {
+        try {
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          const savedTheme = localStorage.getItem('theme');
+          if (savedTheme === 'dark' || (!savedTheme && prefersDark)) { document.documentElement.classList.add('dark'); }
+          else { document.documentElement.classList.remove('dark'); }
+        } catch (e) { console.error("Error applying initial theme:", e); }
+      })();
+    </script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-200 antialiased transition-colors duration-300 min-h-screen flex flex-col">
+
+    <header class="bg-white dark:bg-gray-800 shadow-sm">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="/" class="text-2xl font-bold text-blue-600 dark:text-blue-500">SecureSwap</a>
+             <div class="flex space-x-4 items-center">
+                <div id="user-info" class="text-sm text-gray-600 dark:text-gray-300 hidden">
+                    <span id="user-display-name" class="font-medium">User</span>
+                    <button id="logout-button" class="ml-4 text-red-600 dark:text-red-400 hover:underline focus:outline-none text-sm"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-log-out-icon lucide-log-out"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg></button>
+                </div>
+                
+            </div>
+        </nav>
+    </header>
+
+    <main class="flex-grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-md w-full space-y-8 bg-white dark:bg-gray-800 p-10 rounded-xl shadow-lg">
+            <div>
+                <h2 class="mt-6 text-center text-2xl font-bold text-gray-900 dark:text-white">
+                    Add Your Bank Details
+                </h2>
+                <p class="mt-2 text-center text-sm text-gray-600 dark:text-gray-400">
+                    Please provide your bank account information to receive payments from completed transactions.
+                     <strong class="block mt-1 text-yellow-600 dark:text-yellow-400">This information is required to proceed.</strong>
+                </p>
+            </div>
+            <form class="mt-8 space-y-6" action="#" method="POST" id="bank-details-form">
+                <div class="rounded-md shadow-sm space-y-4">
+                    <div>
+                        <label for="account-number" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Account Number</label>
+                        <input id="account-number" name="accountNumber" type="text" inputmode="numeric" required
+                               class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                               placeholder="Enter your bank account number">
+                    </div>
+                    <div>
+                        <label for="ifsc-code" class="block text-sm font-medium text-gray-700 dark:text-gray-300">IFSC Code</label>
+                        <input id="ifsc-code" name="ifscCode" type="text" required style="text-transform: uppercase;" class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                               placeholder="Enter your bank's IFSC code">
+                    </div>
+                </div>
+
+                 <div id="bank-message" class="form-message text-sm hidden mt-4 text-center"></div>
+
+                <div>
+                    <button type="submit"
+                            class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800">
+                        Save Bank Details
+                    </button>
+                </div>
+                 <p class="text-xs text-center text-gray-500 dark:text-gray-400">Your bank details are stored securely and only used for payment processing.</p>
+            </form>
+        </div>
+    </main>
+
+    <footer class="bg-gray-100 dark:bg-gray-800 mt-auto">
+       <div class="container mx-auto px-6 py-4 text-center text-gray-600 dark:text-gray-400 text-sm">&copy; <span id="copyright-year">2024</span> SecureSwap. All rights reserved.</div>
+   </footer>
+
+    <script>
+      'use strict';
+      // --- Firebase Config ---
+      // PASTE YOUR ACTUAL FIREBASE CONFIG OBJECT HERE!
+      const firebaseConfig = {
+  apiKey: "AIzaSyCWNCws7n00a4IjQ_X08tXUxdbUx4P5XtI",
+  authDomain: "ss-local-4917d.firebaseapp.com",
+  projectId: "ss-local-4917d",
+  storageBucket: "ss-local-4917d.firebasestorage.app",
+  messagingSenderId: "1045208651336",
+  appId: "1:1045208651336:web:3dfe51cf192488aaa36a7d",
+  measurementId: "G-CHR2TXTNCN"
+};
+
+      // --- Initialize Firebase ---
+      let app, auth, db;
+      try {
+        if (typeof firebase === 'undefined' || !firebase.initializeApp) { throw new Error("Firebase SDK not loaded correctly."); }
+        app = firebase.initializeApp(firebaseConfig);
+        auth = firebase.auth();
+        db = firebase.firestore(); // Needed to save bank details
+        console.log("Firebase Initialized Successfully (Bank Details Page).");
+      } catch (e) {
+        console.error("FIREBASE INIT FAILED:", e);
+        document.body.innerHTML = '<div style="padding: 20px; text-align: center; color: red; background-color: white;">CRITICAL ERROR: Could not initialize Firebase. Check console and config.</div>';
+        throw e; // Stop script
+      }
+
+      // --- Wait for DOM Ready ---
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log("DOM Loaded (Bank Details Page).");
+        let currentUser = null;
+
+        try {
+          // --- Elements ---
+          const themeToggle = document.getElementById('checkbox');
+          const htmlElement = document.documentElement;
+          const yearSpan = document.getElementById('copyright-year');
+          const userInfoDiv = document.getElementById('user-info');
+          const userDisplayNameSpan = document.getElementById('user-display-name');
+          const logoutButton = document.getElementById('logout-button');
+          const bankDetailsForm = document.getElementById('bank-details-form');
+          const messageDiv = document.getElementById('bank-message');
+
+          // --- Theme Toggle ---
+          function setTheme(isDark) { /* ... */ if (isDark) { htmlElement.classList.add('dark'); } else { htmlElement.classList.remove('dark'); } localStorage.setItem('theme', isDark ? 'dark' : 'light'); if (themeToggle) themeToggle.checked = isDark; }
+          const isInitiallyDark = htmlElement.classList.contains('dark');
+          if (themeToggle) { themeToggle.checked = isInitiallyDark; themeToggle.addEventListener('change', () => setTheme(themeToggle.checked)); }
+
+          // --- Copyright Year ---
+          if (yearSpan) { yearSpan.textContent = new Date().getFullYear(); }
+
+          // --- Logout Button ---
+          if (logoutButton && auth) {
+            logoutButton.addEventListener('click', () => {
+              auth.signOut().then(() => { window.location.href = './login.html'; }).catch(error => console.error('Sign out error:', error));
+            });
+          }
+
+          // --- Helper to show messages ---
+          function showMessage(msg, isError = true) { /* ... */ if (messageDiv) { messageDiv.textContent = msg; messageDiv.classList.remove('hidden'); if (isError) { messageDiv.className = 'form-message text-sm mt-4 text-center text-red-500 dark:text-red-400'; } else { messageDiv.className = 'form-message text-sm mt-4 text-center text-green-600 dark:text-green-400'; } } else { alert(msg); } }
+
+          // --- Firebase Auth State Listener ---
+          if (auth) {
+              auth.onAuthStateChanged(user => {
+                  if (user) {
+                      currentUser = user; // Store user info
+                      console.log("Bank Details: User is signed in:", user.email);
+                      if(userInfoDiv) userInfoDiv.classList.remove('hidden');
+                      if(userDisplayNameSpan) userDisplayNameSpan.textContent = user.displayName || user.email || 'User';
+                      // Optional: Check if details *already* exist and maybe pre-fill or show message? For now, just allow saving.
+                  } else {
+                      // User is signed out. Redirect to login.
+                      console.log("Bank Details: User is signed out. Redirecting to login.");
+                      window.location.href = './login.html';
+                  }
+              });
+          } else {
+              console.error("Firebase Auth not available. Redirecting to login.");
+              window.location.href = './login.html';
+          }
+
+          // --- Bank Details Form Handler ---
+          if (bankDetailsForm && db) {
+              bankDetailsForm.addEventListener('submit', async (event) => {
+                  event.preventDefault();
+                  if (!currentUser) { showMessage("You must be logged in to save bank details."); return; }
+                  if(messageDiv) messageDiv.classList.add('hidden');
+
+                  const accountNumberInput = bankDetailsForm.querySelector('#account-number');
+                  const ifscInput = bankDetailsForm.querySelector('#ifsc-code');
+                  const accountNumber = accountNumberInput ? accountNumberInput.value.trim() : '';
+                  const ifscCode = ifscInput ? ifscInput.value.trim().toUpperCase() : ''; // Store IFSC uppercase
+
+                  // Basic Validation (Add more specific checks as needed)
+                  if (!accountNumber || !ifscCode) { showMessage("Please enter both Account Number and IFSC Code."); return; }
+                  // Example: Basic length checks (adjust based on Indian standards)
+                  if (accountNumber.length < 9 || accountNumber.length > 18 || !/^\d+$/.test(accountNumber)) { showMessage("Please enter a valid account number."); return; }
+                  if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifscCode)) { showMessage("Please enter a valid IFSC code (e.g., ABCD0123456)."); return; }
+
+
+                  const bankDetailsData = {
+                      accountNumber: accountNumber, // WARNING: Storing sensitive data - encrypt in production!
+                      ifscCode: ifscCode,
+                      userId: currentUser.uid, // Link to the user
+                      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                  };
+
+                  console.log("Attempting to save bank details for user:", currentUser.uid);
+
+                  try {
+                      const submitButton = bankDetailsForm.querySelector('button[type="submit"]');
+                      if(submitButton) submitButton.disabled = true; submitButton.textContent = 'Saving...';
+
+                      // Use the user's UID as the document ID for easy lookup
+                      const docRef = db.collection("bankDetails").doc(currentUser.uid);
+                      // Use set with merge:true to create or update the document
+                      await docRef.set(bankDetailsData, { merge: true });
+
+                      console.log("Bank details successfully saved for user: ", currentUser.uid);
+                      showMessage("Bank details saved successfully! Redirecting...", false);
+                      setTimeout(() => {
+                          window.location.href = './dashboard.html'; // Redirect to dashboard
+                      }, 1500);
+
+                  } catch (error) {
+                      console.error("Error saving bank details to Firestore: ", error);
+                      showMessage("Failed to save bank details. Please try again.");
+                      const submitButton = bankDetailsForm.querySelector('button[type="submit"]');
+                      if(submitButton) { submitButton.disabled = false; submitButton.textContent = 'Save Bank Details'; }
+                  }
+              });
+          } else if (!bankDetailsForm) { console.warn("Bank details form (#bank-details-form) not found."); }
+
+        } catch (error) {
+            console.error("Error during DOMContentLoaded setup (Bank Details Page):", error);
+        }
+      }); // End DOMContentLoaded
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Contact Us | SecureSwap</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 0; background: #f7f9fc; color: #333; }
+    header { background-color: #0a2540; color: white; padding: 2rem; text-align: center; }
+    main { padding: 2rem 5vw; max-width: 800px; margin: auto; }
+    label { display: block; margin: 1rem 0 0.2rem; }
+    input, textarea { width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px; }
+    button { margin-top: 1rem; padding: 0.5rem 1.5rem; background-color: #0a2540; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    button:hover { background-color: #08345c; }
+    ul { list-style-type: none; padding: 0; }
+    ul li { margin: 0.5rem 0; }
+    h2 { margin-top: 2rem; color: #0a2540; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Contact Us</h1>
+  </header>
+  <main>
+    <p>If you have any questions or need assistance, feel free to reach out:</p>
+    <ul>
+      <li>Email: support@secureswap.in</li>
+      <li>Phone: +91-XXXXXXXXXX</li>
+      <li>Address: SecureSwap HQ, Bengaluru, India</li>
+    </ul>
+
+    <h2>Contact Form</h2>
+    <form action="mailto:support@secureswap.in" method="post" enctype="text/plain">
+      <label for="name">Your Name:</label>
+      <input type="text" id="name" name="name" required />
+
+      <label for="email">Your Email:</label>
+      <input type="email" id="email" name="email" required />
+
+      <label for="message">Message:</label>
+      <textarea id="message" name="message" rows="4" required></textarea>
+
+      <button type="submit">Send</button>
+    </form>
+  </main>
+</body>
+</html>

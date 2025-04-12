@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transaction Details - SecureSwap</title>
+    <link rel="shortcut icon" sizes="64x64" href="./src/images/fav_logo.png" type="image/x-icon">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+    <style>
+      /* Lucide Icons Font Face */
+      @font-face { font-family: 'LucideIcons'; src: url(https://cdn.jsdelivr.net/npm/lucide-static@latest/font/Lucide.ttf) format('truetype'); }
+      .lucide { font-family: 'LucideIcons'; font-style: normal; font-weight: normal; font-variant: normal; text-rendering: auto; line-height: 1; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; display: inline-block; }
+      html { scroll-behavior: smooth; }
+      /* Dark Mode Toggle */
+      .theme-switch-wrapper { display: flex; align-items: center; gap: 8px; }
+      .theme-switch { display: inline-block; height: 24px; position: relative; width: 44px; }
+      .theme-switch input { display:none; }
+      .slider { background-color: #ccc; bottom: 0; cursor: pointer; left: 0; position: absolute; right: 0; top: 0; transition: .4s; }
+      .slider:before { background-color: #fff; bottom: 4px; content: ""; height: 16px; left: 4px; position: absolute; transition: .4s; width: 16px; }
+      input:checked + .slider { background-color: #3B82F6; }
+      input:checked + .slider:before { transform: translateX(20px); }
+      .slider.round { border-radius: 24px; } .slider.round:before { border-radius: 50%; }
+      html.dark .dark-mode-icon { color: #F59E0B; } html:not(.dark) .light-mode-icon { color: #F59E0B; }
+      body { font-family: 'Inter', sans-serif; }
+      /* Status Badge Styles */
+      .status-badge { @apply inline-block px-2.5 py-0.5 rounded-full text-xs font-medium capitalize whitespace-nowrap; }
+      .status-pending_acceptance { @apply bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300; }
+      .status-awaiting_payment { @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300; }
+      .status-awaiting_shipment { @apply bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300; }
+      .status-shipped { @apply bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300; }
+      .status-awaiting_confirmation { @apply bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300; }
+      .status-completed { @apply bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300; }
+      .status-disputed { @apply bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300; }
+      .status-cancelled { @apply bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300; }
+      .status-rejected { @apply bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300; }
+      .status-unknown { @apply bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300; }
+      /* Detail list styling */
+      .detail-label { @apply font-medium text-gray-500 dark:text-gray-400; }
+      .detail-value { @apply text-gray-900 dark:text-white; }
+      /* Loading/Error State */
+      .loading-error-placeholder { @apply text-center py-10 text-gray-500 dark:text-gray-400; }
+       /* Form message styling */
+      .form-message { transition: opacity 0.3s ease-in-out; }
+    </style>
+
+    <script type="text/tailwindcss-config">
+      {
+        darkMode: 'class',
+        theme: { extend: { fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'], }, } }
+      }
+    </script>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-functions.js"></script>
+
+    <script>
+      (function() {
+        try {
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          const savedTheme = localStorage.getItem('theme');
+          if (savedTheme === 'dark' || (!savedTheme && prefersDark)) { document.documentElement.classList.add('dark'); }
+          else { document.documentElement.classList.remove('dark'); }
+        } catch (e) { console.error("Error applying initial theme:", e); }
+      })();
+    </script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-200 antialiased transition-colors duration-300 min-h-screen flex flex-col">
+
+    <header class="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-50 transition-colors duration-300">
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+             <a href="/" class="text-2xl font-bold text-blue-600 dark:text-blue-500">SecureSwap</a>
+             <div class="flex space-x-4 items-center">
+                <div id="user-info" class="text-sm text-gray-600 dark:text-gray-300 hidden items-center">
+                    <span class="lucide mr-1 text-lg" aria-hidden="true">&#xea6f;</span>
+                    <span id="user-display-name" class="font-medium mr-3">User</span>
+                    <button id="logout-button" class="text-red-600 dark:text-red-400 hover:underline focus:outline-none text-sm">Logout</button>
+                </div>
+                <div class="theme-switch-wrapper">
+                    <span class="lucide text-gray-500 light-mode-icon" aria-hidden="true">&#xea87;</span>
+                    <label class="theme-switch" for="checkbox"><input type="checkbox" id="checkbox" aria-label="Toggle dark mode"/><div class="slider round"></div></label>
+                    <span class="lucide text-gray-500 dark-mode-icon" aria-hidden="true">&#xe9a6;</span>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="flex-grow container mx-auto px-6 py-8">
+        <div class="flex justify-between items-center mb-6 flex-wrap gap-2">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Transaction Details</h1>
+            <a href="./dashboard.html" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">&larr; Back to Dashboard</a>
+        </div>
+
+        <div id="transaction-details-container" class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow space-y-6">
+            <div id="loading-error-placeholder" class="loading-error-placeholder">Loading transaction details...</div>
+            <div id="transaction-info" class="hidden space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><span class="detail-label block">Item/Service:</span><span id="item-description" class="detail-value text-lg"></span></div>
+                    <div><span class="detail-label block">Amount:</span><span id="transaction-amount" class="detail-value text-lg font-semibold"></span></div>
+                </div>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div><span class="detail-label block">Buyer:</span><span id="buyer-email" class="detail-value"></span></div>
+                     <div><span class="detail-label block">Seller:</span><span id="seller-email" class="detail-value"></span></div>
+                 </div>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div><span class="detail-label block">Status:</span><span id="transaction-status" class="status-badge"></span></div>
+                     <div><span class="detail-label block">Created On:</span><span id="created-date" class="detail-value"></span></div>
+                 </div>
+                 <div id="terms-section" class="hidden"><span class="detail-label block">Additional Terms:</span><p id="transaction-terms" class="detail-value whitespace-pre-wrap"></p></div>
+                 <hr class="dark:border-gray-600">
+                 <div>
+                     <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-2">Next Steps & Actions</h3>
+                     <div id="action-prompt" class="text-sm text-gray-600 dark:text-gray-400 mb-4">Loading actions...</div>
+                     <div id="payment-message" class="form-message text-sm hidden my-2 text-center"></div>
+                     <div id="action-buttons-area" class="flex flex-wrap gap-3">
+                         <span class="text-sm text-gray-500 italic">(No actions available currently)</span>
+                     </div>
+                 </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-100 dark:bg-gray-800 mt-12">
+       <div class="container mx-auto px-6 py-4 text-center text-gray-600 dark:text-gray-400 text-sm">&copy; <span id="copyright-year">2024</span> SecureSwap. All rights reserved.</div>
+   </footer>
+
+    <script>
+      'use strict';
+      // --- Firebase Config ---
+      // PASTE YOUR ACTUAL FIREBASE CONFIG OBJECT HERE!
+      const firebaseConfig = {
+        apiKey: "YOUR_API_KEY", authDomain: "YOUR_AUTH_DOMAIN", projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_STORAGE_BUCKET", messagingSenderId: "YOUR_MESSAGING_SENDER_ID", appId: "YOUR_APP_ID"
+      };
+
+      // --- Initialize Firebase ---
+      let app, auth, db, functions; // Add functions
+      try {
+        if (typeof firebase === 'undefined' || !firebase.initializeApp) { throw new Error("Firebase SDK not loaded correctly."); }
+        app = firebase.initializeApp(firebaseConfig);
+        auth = firebase.auth();
+        db = firebase.firestore();
+        functions = firebase.functions(); // Initialize Cloud Functions
+        // Optional: Connect to emulator for local testing
+        // if (window.location.hostname === "localhost") {
+        //    console.log("Using Firebase Emulators");
+        //    db.useEmulator("localhost", 8080);
+        //    auth.useEmulator("http://localhost:9099");
+        //    functions.useEmulator("localhost", 5001);
+        // }
+        console.log("Firebase Initialized Successfully (Transaction View Page).");
+      } catch (e) {
+        console.error("FIREBASE INIT FAILED:", e);
+        document.body.innerHTML = '<div style="padding: 20px; text-align: center; color: red; background-color: white;">CRITICAL ERROR: Could not initialize Firebase. Check console and config.</div>';
+        throw e; // Stop script
+      }
+
+      // --- Wait for DOM Ready ---
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log("DOM Loaded (Transaction View Page).");
+        let currentUser = null;
+        let currentTransactionId = null;
+        let currentTransactionData = null;
+        let unsubscribeTransaction = null;
+
+        try {
+          // --- Elements ---
+          const themeToggle = document.getElementById('checkbox');
+          const htmlElement = document.documentElement;
+          const yearSpan = document.getElementById('copyright-year');
+          const userInfoDiv = document.getElementById('user-info');
+          const userDisplayNameSpan = document.getElementById('user-display-name');
+          const logoutButton = document.getElementById('logout-button');
+          const loadingErrorPlaceholder = document.getElementById('loading-error-placeholder');
+          const transactionInfoDiv = document.getElementById('transaction-info');
+          const itemDescSpan = document.getElementById('item-description');
+          const amountSpan = document.getElementById('transaction-amount');
+          const buyerSpan = document.getElementById('buyer-email');
+          const sellerSpan = document.getElementById('seller-email');
+          const statusSpan = document.getElementById('transaction-status');
+          const createdSpan = document.getElementById('created-date');
+          const termsSection = document.getElementById('terms-section');
+          const termsP = document.getElementById('transaction-terms');
+          const actionPromptDiv = document.getElementById('action-prompt');
+          const actionButtonsArea = document.getElementById('action-buttons-area');
+          const paymentMessageDiv = document.getElementById('payment-message'); // For payment feedback
+
+          // --- Theme Toggle ---
+          function setTheme(isDark) { if (isDark) { htmlElement.classList.add('dark'); } else { htmlElement.classList.remove('dark'); } localStorage.setItem('theme', isDark ? 'dark' : 'light'); if (themeToggle) themeToggle.checked = isDark; }
+          const isInitiallyDark = htmlElement.classList.contains('dark');
+          if (themeToggle) { themeToggle.checked = isInitiallyDark; themeToggle.addEventListener('change', () => setTheme(themeToggle.checked)); }
+
+          // --- Copyright Year ---
+          if (yearSpan) { yearSpan.textContent = new Date().getFullYear(); }
+
+          // --- Logout Button ---
+          if (logoutButton && auth) {
+            logoutButton.addEventListener('click', () => {
+              if(unsubscribeTransaction) unsubscribeTransaction();
+              auth.signOut().then(() => { window.location.href = './login.html'; }).catch(error => console.error('Sign out error:', error));
+            });
+          }
+
+          // --- Get Transaction ID from URL ---
+          function getTransactionIdFromUrl() { const params = new URLSearchParams(window.location.search); return params.get('id'); }
+
+          // --- Show Loading/Error Message ---
+          function showLoadingError(message) { if (loadingErrorPlaceholder) { loadingErrorPlaceholder.textContent = message; loadingErrorPlaceholder.classList.remove('hidden'); } if (transactionInfoDiv) { transactionInfoDiv.classList.add('hidden'); } }
+
+          // --- Show Payment Message ---
+          function showPaymentMessage(message, isError = false) {
+              if (paymentMessageDiv) {
+                  paymentMessageDiv.textContent = message;
+                  paymentMessageDiv.classList.remove('hidden');
+                  if (isError) { paymentMessageDiv.className = 'form-message text-sm my-2 text-center text-red-500 dark:text-red-400'; }
+                  else { paymentMessageDiv.className = 'form-message text-sm my-2 text-center text-green-600 dark:text-green-400'; }
+              } else { alert(message); }
+          }
+
+
+          // --- Fetch and Display Transaction Details (Listener) ---
+          function listenForTransactionUpdates(txId) {
+              // ... (Keep the exact same listener setup as previous version) ...
+              if (!db || !txId) { showLoadingError("Invalid transaction request."); return; }
+              if (!currentUser) { showLoadingError("You must be logged in."); return; }
+              console.log("Setting up listener for transaction:", txId); showLoadingError("Loading transaction details...");
+              const docRef = db.collection("transactions").doc(txId);
+              if (unsubscribeTransaction) { console.log("Stopping previous listener."); unsubscribeTransaction(); }
+
+              unsubscribeTransaction = docRef.onSnapshot((docSnap) => {
+                  if (docSnap.exists) {
+                      currentTransactionData = { id: docSnap.id, ...docSnap.data() };
+                      console.log("Transaction data updated:", currentTransactionData);
+                      if (currentUser.email !== currentTransactionData.buyerEmail && currentUser.email !== currentTransactionData.sellerEmail) { showLoadingError("Access Denied."); if(unsubscribeTransaction) unsubscribeTransaction(); return; }
+                      if(itemDescSpan) itemDescSpan.textContent = currentTransactionData.itemDescription || 'N/A';
+                      if(amountSpan) amountSpan.textContent = `₹${(currentTransactionData.amount || 0).toFixed(2)}`;
+                      if(buyerSpan) buyerSpan.textContent = currentTransactionData.buyerEmail || 'N/A';
+                      if(sellerSpan) sellerSpan.textContent = currentTransactionData.sellerEmail || 'N/A';
+                      if(createdSpan) createdSpan.textContent = currentTransactionData.createdAt?.toDate ? currentTransactionData.createdAt.toDate().toLocaleString() : 'N/A';
+                      if (termsP && termsSection && currentTransactionData.terms) { termsP.textContent = currentTransactionData.terms; termsSection.classList.remove('hidden'); } else if (termsSection) { termsSection.classList.add('hidden'); }
+                      updateStatusAndActions(); // Update status badge and action buttons
+                      if(loadingErrorPlaceholder) loadingErrorPlaceholder.classList.add('hidden');
+                      if(transactionInfoDiv) transactionInfoDiv.classList.remove('hidden');
+                  } else { console.log("Transaction document deleted or does not exist!"); showLoadingError("Transaction not found."); if(unsubscribeTransaction) unsubscribeTransaction(); }
+              }, (error) => { console.error("Error listening to transaction:", error); showLoadingError("Error loading transaction details."); if(unsubscribeTransaction) unsubscribeTransaction(); });
+          } // --- End of listenForTransactionUpdates ---
+
+
+          // --- Update Status and Actions ---
+          function updateStatusAndActions() {
+              if (!currentTransactionData || !currentUser || !actionPromptDiv || !actionButtonsArea) return;
+              const currentStatus = currentTransactionData.status || 'unknown';
+              const userRole = currentUser.email === currentTransactionData.buyerEmail ? 'buyer' : 'seller';
+              const isInitiator = currentUser.email === currentTransactionData.initiatorEmail;
+              if (statusSpan) { statusSpan.textContent = currentStatus.replace(/_/g, ' '); statusSpan.className = 'status-badge'; statusSpan.classList.add(`status-${currentStatus}`); }
+              actionPromptDiv.textContent = ''; actionButtonsArea.innerHTML = '';
+              let promptText = ""; let availableActions = [];
+              const canCancel = !['completed', 'cancelled', 'rejected', 'disputed'].includes(currentStatus);
+
+              switch (currentStatus) {
+                  case 'pending_acceptance':
+                      const otherPartyEmail = isInitiator ? (userRole === 'buyer' ? currentTransactionData.sellerEmail : currentTransactionData.buyerEmail) : currentTransactionData.initiatorEmail;
+                      promptText = `Waiting for ${isInitiator ? 'the other party' : 'you'} (${otherPartyEmail}) to accept the transaction details.`;
+                      if (!isInitiator) { availableActions.push(createActionButton('Accept Details', 'accept')); availableActions.push(createActionButton('Reject Transaction', 'reject', true)); }
+                      break;
+                  case 'awaiting_payment':
+                      promptText = "Details accepted. Waiting for the buyer to make payment.";
+                      if (userRole === 'buyer') {
+                          // Show Pay button instead of QR/Simulated button
+                          availableActions.push(createActionButton('Pay with Razorpay', 'pay_razorpay'));
+                      }
+                      break;
+                  case 'awaiting_shipment':
+                      promptText = "Payment confirmed. Waiting for the seller to ship/deliver.";
+                       if (userRole === 'seller') { availableActions.push(createActionButton('Confirm Shipment/Delivery', 'ship')); }
+                      break;
+                  case 'shipped':
+                       promptText = "Item shipped/delivered. Waiting for the buyer to confirm receipt.";
+                       if (userRole === 'buyer') { availableActions.push(createActionButton('Confirm Receipt & Satisfaction', 'confirm_receipt')); availableActions.push(createActionButton('Raise Dispute', 'dispute', true)); }
+                      break;
+                  case 'completed': promptText = "This transaction is complete."; break;
+                  case 'cancelled': promptText = "This transaction was cancelled."; break;
+                  case 'rejected': promptText = `This transaction was rejected.`; break;
+                  case 'disputed': promptText = "This transaction is disputed. Support will review."; break;
+                  default: promptText = "Transaction status is unknown.";
+              }
+              // if (canCancel) { availableActions.push(createActionButton('Cancel Transaction', 'cancel', true)); }
+
+              actionPromptDiv.textContent = promptText;
+              if (availableActions.length > 0) { availableActions.forEach(button => actionButtonsArea.appendChild(button)); }
+              else if (!['completed', 'cancelled', 'rejected', 'disputed'].includes(currentStatus)) { actionButtonsArea.innerHTML = `<span class="text-sm text-gray-500 italic">(Waiting for other party)</span>`; }
+              else { actionButtonsArea.innerHTML = ''; }
+          } // --- End of updateStatusAndActions ---
+
+
+          // --- Create Action Button Helper ---
+          function createActionButton(text, actionId, isSecondary = false) { /* ... (Keep same as previous version) ... */ const button = document.createElement('button'); button.textContent = text; button.dataset.action = actionId; const baseClasses = 'px-4 py-2 rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed'; if (isSecondary) { button.className = `${baseClasses} border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:ring-indigo-500`; } else { button.className = `${baseClasses} text-white bg-blue-600 hover:bg-blue-700 focus:ring-blue-500`; } button.addEventListener('click', handleTransactionAction); return button; }
+
+
+          // --- Handle Transaction Actions (including Razorpay initiation) ---
+          async function handleTransactionAction(event) {
+              const button = event.target;
+              if (!db || !currentUser || !currentTransactionData || !button.dataset.action) return;
+              const action = button.dataset.action;
+              const txId = currentTransactionData.id;
+              const userRole = currentUser.email === currentTransactionData.buyerEmail ? 'buyer' : 'seller';
+              const isInitiator = currentUser.email === currentTransactionData.initiatorEmail;
+              let updateData = {}; let successMessage = ''; let confirmMessage = null;
+
+              console.log(`Action clicked: ${action} by ${userRole}`);
+              button.disabled = true; // Disable button immediately
+              if(paymentMessageDiv) paymentMessageDiv.classList.add('hidden'); // Hide previous payment messages
+
+              try {
+                  // --- Handle Razorpay Payment Initiation ---
+                  if (action === 'pay_razorpay') {
+                      if (userRole !== 'buyer') throw new Error("Only buyer can pay.");
+                      if (!functions) throw new Error("Cloud Functions SDK not initialized.");
+
+                      console.log("Initiating Razorpay payment...");
+                      button.textContent = 'Processing...';
+                      showPaymentMessage("Creating secure payment order...", false);
+
+                      // Call the Cloud Function to create the order
+                      const createOrderFunction = firebase.functions().httpsCallable('createRazorpayOrder');
+                      const result = await createOrderFunction({ transactionId: txId });
+                      const orderData = result.data; // { orderId, amount, currency, keyId }
+
+                      console.log("Razorpay Order created:", orderData);
+                      showPaymentMessage("Redirecting to payment gateway...", false);
+
+                      // Prepare Razorpay Checkout options
+                      const options = {
+                          key: orderData.keyId, // Your public Razorpay Key ID
+                          amount: orderData.amount, // Amount in paise from backend order
+                          currency: orderData.currency,
+                          name: "SecureSwap", // Your Brand Name
+                          description: `Payment for: ${currentTransactionData.itemDescription.substring(0, 50)}`, // Transaction description
+                          order_id: orderData.orderId, // The order_id obtained from Cloud Function
+                          handler: function (response) {
+                              // This function is called when payment is successful *on Razorpay's side*
+                              console.log("Razorpay payment successful (frontend callback):", response);
+                              // DO NOT update status here. Wait for backend webhook verification.
+                              showPaymentMessage("Payment successful! Waiting for server verification...", false);
+                              // Disable payment button permanently after initiating checkout
+                              button.textContent = 'Payment Initiated';
+                              button.disabled = true;
+                              // The Firestore listener will automatically update the UI when the webhook succeeds
+                          },
+                          prefill: {
+                              name: currentUser.displayName || '',
+                              email: currentUser.email,
+                              // contact: "YOUR_CUSTOMER_CONTACT_NUMBER" // Optional
+                          },
+                          notes: {
+                              transaction_id: txId // Pass transaction ID for reference
+                          },
+                          theme: {
+                              color: "#3B82F6" // Match your theme color
+                          }
+                      };
+
+                      // Handle payment failure on Razorpay's side
+                      options.modal = {
+                          ondismiss: function() {
+                              console.log('Razorpay checkout modal dismissed.');
+                              showPaymentMessage("Payment cancelled or modal closed.", true);
+                              button.disabled = false; // Re-enable button if modal is closed
+                              button.textContent = 'Pay with Razorpay';
+                          }
+                      };
+
+                      // Create Razorpay instance and open checkout
+                      const rzp = new Razorpay(options);
+                      rzp.on('payment.failed', function (response){
+                            console.error("Razorpay payment failed (frontend callback):", response.error);
+                            showPaymentMessage(`Payment Failed: ${response.error.description || 'Please try again.'}`, true);
+                            button.disabled = false; // Re-enable button on failure
+                            button.textContent = 'Pay with Razorpay';
+                      });
+
+                      rzp.open(); // Open the Razorpay modal
+
+                      // No Firestore update here, exit function
+                      return; // Important: stop execution here, wait for webhook
+
+                  } // --- End of Razorpay Handling ---
+
+
+                  // --- Handle Other Actions (Accept, Reject, Ship, Confirm Receipt, Dispute) ---
+                  switch (action) {
+                      case 'accept':
+                          if (isInitiator) throw new Error("Initiator cannot accept.");
+                          const bothAccepted = (userRole === 'buyer' && currentTransactionData.sellerAccepted) || (userRole === 'seller' && currentTransactionData.buyerAccepted);
+                          updateData = { status: bothAccepted ? 'awaiting_payment' : 'pending_acceptance', buyerAccepted: userRole === 'buyer' ? true : currentTransactionData.buyerAccepted, sellerAccepted: userRole === 'seller' ? true : currentTransactionData.sellerAccepted };
+                          successMessage = bothAccepted ? "Accepted. Waiting for payment." : "Acceptance recorded.";
+                          break;
+                      case 'reject':
+                          if (isInitiator) throw new Error("Initiator cannot reject.");
+                          confirmMessage = "Reject this transaction?"; updateData = { status: 'rejected' }; successMessage = "Transaction rejected.";
+                          break;
+                      // 'paid_simulated' is removed, handled by Razorpay flow now
+                      case 'ship':
+                           if (userRole !== 'seller') throw new Error("Only seller can confirm shipment.");
+                           confirmMessage = "Confirm item shipped/delivered?"; updateData = { status: 'shipped', sellerConfirmedShipment: true }; successMessage = "Shipment confirmed.";
+                           break;
+                      case 'confirm_receipt':
+                           if (userRole !== 'buyer') throw new Error("Only buyer can confirm receipt.");
+                           confirmMessage = "Confirm item received and satisfied?"; updateData = { status: 'completed', buyerConfirmedReceipt: true }; successMessage = "Receipt confirmed! Transaction completed.";
+                           break;
+                       case 'dispute':
+                           confirmMessage = "Raise a dispute?"; updateData = { status: 'disputed', disputeRaised: true }; successMessage = "Dispute raised.";
+                           break;
+                      default: throw new Error(`Unknown action: ${action}`);
+                  }
+
+                  if (confirmMessage && !confirm(confirmMessage)) { button.disabled = false; return; }
+
+                  const docRef = db.collection("transactions").doc(txId);
+                  await docRef.update(updateData);
+                  console.log("Transaction updated successfully:", updateData);
+                  // UI updates via listener, maybe show temporary feedback
+                  // showPaymentMessage(successMessage, false); // Use payment message div for feedback
+
+              } catch (error) {
+                  console.error(`Error performing action '${action}':`, error);
+                  alert(`Failed to ${action.replace(/_/g, ' ')}. Error: ${error.message}`);
+                  button.disabled = false; // Re-enable button on error
+              }
+          } // --- End of handleTransactionAction ---
+
+          // --- Firebase Auth State Listener ---
+          if (auth) {
+              auth.onAuthStateChanged(user => {
+                  if (user) {
+                      currentUser = user;
+                      console.log("Transaction View: User is signed in:", user.email);
+                      if(userInfoDiv) userInfoDiv.classList.remove('hidden');
+                      if(userDisplayNameSpan) userDisplayNameSpan.textContent = user.displayName || user.email.split('@')[0] || 'User';
+                      currentTransactionId = getTransactionIdFromUrl();
+                      if (currentTransactionId) { listenForTransactionUpdates(currentTransactionId); }
+                      else { showLoadingError("No transaction ID provided."); }
+                  } else {
+                      console.log("Transaction View: User is signed out. Redirecting to login.");
+                      if (unsubscribeTransaction) unsubscribeTransaction();
+                      window.location.href = './login.html';
+                  }
+              });
+          } else { console.error("Firebase Auth not available. Redirecting."); window.location.href = './login.html'; }
+
+        } catch (error) {
+            console.error("Error during DOMContentLoaded setup (Transaction View Page):", error);
+            const mainElement = document.querySelector('main');
+            if (mainElement) mainElement.innerHTML = '<p style="color: red; text-align: center; padding: 20px;">Sorry, an error occurred while loading the transaction details.</p>';
+        }
+      }); // End DOMContentLoaded
+    </script>
+
+</body>
+</html>

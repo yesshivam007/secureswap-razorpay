@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureSwap</title>
+    <link rel="shortcut icon" sizes="64x64" href="./src/images/fav_logo.png" type="image/x-icon">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+      /* Lucide Icons Font Face */
+      @font-face { font-family: 'LucideIcons'; src: url(https://cdn.jsdelivr.net/npm/lucide-static@latest/font/Lucide.ttf) format('truetype'); }
+      .lucide { font-family: 'LucideIcons'; font-style: normal; font-weight: normal; font-variant: normal; text-rendering: auto; line-height: 1; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; display: inline-block; }
+      /* Accordion Styling */
+      .faq-question { cursor: pointer; }
+      .faq-answer { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+      .faq-answer.open { max-height: 500px; transition: max-height 0.5s ease-in; }
+      /* Smooth Scroll */
+      html { scroll-behavior: smooth; }
+      /* Dark Mode Toggle */
+      .theme-switch-wrapper { display: flex; align-items: center; gap: 8px; }
+      .theme-switch { display: inline-block; height: 24px; position: relative; width: 44px; }
+      .theme-switch input { display:none; }
+      .slider { background-color: #ccc; bottom: 0; cursor: pointer; left: 0; position: absolute; right: 0; top: 0; transition: .4s; }
+      .slider:before { background-color: #fff; bottom: 4px; content: ""; height: 16px; left: 4px; position: absolute; transition: .4s; width: 16px; }
+      input:checked + .slider { background-color: #3B82F6; } /* blue-600 */
+      input:checked + .slider:before { transform: translateX(20px); }
+      .slider.round { border-radius: 24px; }
+      .slider.round:before { border-radius: 50%; }
+      html.dark .dark-mode-icon { color: #F59E0B; } /* amber-500 */
+      html:not(.dark) .light-mode-icon { color: #F59E0B; } /* amber-500 */
+      /* Animations */
+      .animate-on-scroll { opacity: 0; transform: translateY(20px); transition: opacity 0.6s ease-out, transform 0.6s ease-out; }
+      .animate-on-scroll.is-visible { opacity: 1; transform: translateY(0); }
+      .delay-1 { transition-delay: 0.1s; } .delay-2 { transition-delay: 0.2s; } .delay-3 { transition-delay: 0.3s; }
+      .delay-4 { transition-delay: 0.4s; } .delay-5 { transition-delay: 0.5s; }
+    </style>
+
+    <script type="text/tailwindcss-config">
+      {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            },
+          }
+        }
+      }
+    </script>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <script>
+      (function() {
+        try {
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          const savedTheme = localStorage.getItem('theme');
+          if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) { console.error("Error applying initial theme:", e); }
+      })();
+    </script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-200 antialiased transition-colors duration-300">
+
+    <header class="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-50 transition-colors duration-300">
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <a href="#" class="text-2xl font-bold text-blue-600 dark:text-blue-500">SecureSwap</a>
+            <div class="hidden md:flex space-x-6 items-center">
+                <a href="#problem" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-500 transition duration-300">Problem</a>
+                <a href="#process" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-500 transition duration-300">How it Works</a>
+                <a href="#why" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-500 transition duration-300">Why Us</a>
+                <a href="#testimonials" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-500 transition duration-300">Testimonials</a>
+                <a href="#faq" class="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-500 transition duration-300">FAQs</a>
+            </div>
+            <button id="mobile-menu-button" class="md:hidden text-gray-600 dark:text-gray-300 focus:outline-none" aria-label="Toggle mobile menu" aria-expanded="false">
+                <span class="lucide text-2xl menu-icon-content"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-menu-icon lucide-menu"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg></span>
+            </button>
+        </nav>
+        <div id="mobile-menu" class="hidden md:hidden px-6 pb-4 space-y-2 bg-white dark:bg-gray-800 shadow-md">
+            <a href="#problem" class="block py-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-500 transition duration-300">Problem</a>
+            <a href="#process" class="block py-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-500 transition duration-300">How it Works</a>
+            <a href="#why" class="block py-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-500 transition duration-300">Why Us</a>
+            <a href="#testimonials" class="block py-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-500 transition duration-300">Testimonials</a>
+            <a href="#faq" class="block py-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-500 transition duration-300">FAQs</a>
+            <a href="./login.html" class="block bg-blue-600 text-white text-center px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300 mt-2">Get Started</a>
+                    </div>
+    </header>
+
+    <main>
+        <section id="hero" class="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-900 py-20 md:py-32 overflow-hidden">
+            <div class="container mx-auto px-6 text-center flex flex-col md:flex-row items-center gap-12">
+                <div class="md:w-1/2 text-center md:text-left animate-on-scroll">
+                    <h1 class="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white leading-tight mb-4">Making the Internet a <span class="text-blue-600 dark:text-blue-500">Trustworthy</span> Marketplace</h1>
+                    <p class="text-lg md:text-xl text-gray-600 dark:text-gray-300 mb-8 animate-on-scroll delay-1">Secure Swap ensures both parties complete their side of the deal—no scams, no chargebacks, just secure transactions.</p>
+                    <a href="./login.html" class="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-blue-700 dark:hover:bg-blue-600 transition duration-300 shadow-md transform hover:scale-105 animate-on-scroll delay-2">Start a Secure Transaction</a>
+                </div>
+                <div class="md:w-1/2 animate-on-scroll delay-3">
+                    <img src="./src/images/secure_exchange.svg" alt="Secure Exchange Illustration" class="rounded-lg mx-auto transform transition duration-500 hover:scale-105" onerror="this.onerror=null; this.src='https://placehold.co/600x400/CCCCCC/FFFFFF?text=Img+Error'" width="500" height="500">
+                </div>
+            </div>
+        </section>
+
+        <section id="problem" class="py-16 md:py-24 bg-white dark:bg-gray-800 transition-colors duration-300 overflow-hidden">
+            <div class="container mx-auto px-6">
+                <div class="grid md:grid-cols-2 gap-12 items-center">
+                    <div class="animate-on-scroll">
+                        <h2 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-6">The Problem with P2P</h2>
+                        <p class="text-lg text-gray-600 dark:text-gray-300 mb-6">P2P transactions are risky. You send money first, the other party disappears. You ship an item, and payment never arrives. Scams are everywhere.</p>
+                        <img src="./src/images/risky_transaction_2.svg" alt="Risky Transaction Illustration" class="rounded-lg mx-auto" onerror="this.onerror=null; this.src='https://placehold.co/500x300/CCCCCC/FFFFFF?text=Img+Error'" width="400" height="400">
+                    </div>
+                    <div class="animate-on-scroll delay-2">
+                        <h2 class="text-3xl md:text-4xl font-bold text-emerald-500 dark:text-emerald-400 mb-6">The SecureSwap Solution</h2>
+                        <p class="text-lg text-gray-600 dark:text-gray-300 mb-6">SecureSwap holds the payment in escrow until both parties fulfill their promises. No fraud. No disputes. Just safe transactions.</p>
+                         <img src="./src/images/solution.svg" alt="Secure Solution Illustration" class="rounded-lg mx-auto" onerror="this.onerror=null; this.src='https://placehold.co/500x300/CCCCCC/FFFFFF?text=Img+Error'" width="400" height="400">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="process" class="py-16 md:py-24 bg-gray-50 dark:bg-gray-900 transition-colors duration-300 overflow-hidden">
+            <div class="container mx-auto px-6 text-center">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4 animate-on-scroll">How It Works</h2>
+                <p class="text-lg text-gray-600 dark:text-gray-300 mb-12 max-w-2xl mx-auto animate-on-scroll delay-1">A simple, secure 3-step process to guarantee safety for both buyers and sellers.</p>
+                <div class="grid md:grid-cols-3 gap-10">
+                    <div class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg text-center border-t-4 border-blue-600 dark:border-blue-500 transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1 animate-on-scroll delay-2">
+                         <img src="./src/images/step1.svg" alt="Step 1 Icon" class="mx-auto mb-6 h-24 w-24 object-contain" onerror="this.onerror=null; this.src='https://placehold.co/96x96/CCCCCC/FFFFFF?text=1'" width="200" height="200">
+                        <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">1. Secure the Payment</h3>
+                        <p class="text-gray-600 dark:text-gray-300">Buyer deposits money into SecureSwap’s secure escrow account.</p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg text-center border-t-4 border-emerald-500 dark:border-emerald-400 transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1 animate-on-scroll delay-3">
+                         <img src="./src/images/step2.svg" alt="Step 2 Icon" class="mx-auto mb-6 h-24 w-24 object-contain" onerror="this.onerror=null; this.src='https://placehold.co/96x96/CCCCCC/FFFFFF?text=2'" width="150" height="150">
+                        <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">2. Complete the Exchange</h3>
+                        <p class="text-gray-600 dark:text-gray-300">Seller delivers the item or service as agreed upon.</p>
+                    </div>
+                    <div class="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-lg text-center border-t-4 border-amber-500 dark:border-amber-400 transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1 animate-on-scroll delay-5">
+                         <img src="./src/images/step3.svg" alt="Step 3 Icon" class="mx-auto mb-6 h-24 w-24 object-contain" onerror="this.onerror=null; this.src='https://placehold.co/96x96/CCCCCC/FFFFFF?text=3'" width="150" height="150">
+                        <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">3. Release the Funds</h3>
+                        <p class="text-gray-600 dark:text-gray-300">Once both parties confirm satisfaction, payment is released to the seller.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="target-users" class="py-16 md:py-24 bg-white dark:bg-gray-800 transition-colors duration-300 overflow-hidden">
+            <div class="container mx-auto px-6 text-center">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-6 animate-on-scroll">Who Can Use SecureSwap?</h2>
+                <p class="text-lg text-gray-600 dark:text-gray-300 mb-8 animate-on-scroll delay-1">Any P2P Transaction two parties are doing from anywhere in India</p> <img src="./src/images/all_p2p.svg" alt="All P2P Transactions Illustration" class="mx-auto mb-12 onerror="this.onerror=null; this.src='https://placehold.co/700x300/CCCCCC/FFFFFF?text=Img+Error'" width="300" height="300">
+                <h3 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-10 animate-on-scroll delay-3">Perfect for transactions involving:</h3>
+                <div id="target-users-grid" class="grid grid-cols-2 sm:grid-cols-4 gap-8">
+                    </div>
+            </div>
+        </section>
+
+        <section id="why" class="py-16 md:py-24 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-900 transition-colors duration-300 overflow-hidden">
+            <div class="container mx-auto px-6">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white text-center mb-12 animate-on-scroll">Your Trust & Safety Guaranteed</h2>
+                 <div id="trust-badges-grid" class="grid md:grid-cols-3 gap-10">
+                    </div>
+            </div>
+        </section>
+
+        <section id="testimonials" class="py-16 md:py-24 bg-white dark:bg-gray-800 transition-colors duration-300 overflow-hidden">
+            <div class="container mx-auto px-6 text-center">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-12 animate-on-scroll">What Our Users Say</h2>
+                <div class="grid md:grid-cols-3 gap-8">
+                    <div class="bg-gray-100 dark:bg-gray-700 p-8 rounded-lg shadow-md transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1 animate-on-scroll delay-1">
+                        <p class="text-gray-600 dark:text-gray-300 italic mb-4">"Finally, a way to buy tickets online without worrying about getting scammed! SecureSwap made the process smooth and safe."</p>
+                        <p class="font-semibold text-gray-800 dark:text-white">- Anjali P.</p><p class="text-sm text-gray-500 dark:text-gray-400">Event Ticket Buyer</p>
+                    </div>
+                     <div class="bg-gray-100 dark:bg-gray-700 p-8 rounded-lg shadow-md transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1 animate-on-scroll delay-2">
+                        <p class="text-gray-600 dark:text-gray-300 italic mb-4">"As a freelancer, getting paid on time used to be a hassle. SecureSwap's escrow ensures I get my payment as soon as the work is approved."</p>
+                        <p class="font-semibold text-gray-800 dark:text-white">- Rohan K.</p><p class="text-sm text-gray-500 dark:text-gray-400">Freelance Designer</p>
+                    </div>
+                     <div class="bg-gray-100 dark:bg-gray-700 p-8 rounded-lg shadow-md transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1 animate-on-scroll delay-3">
+                        <p class="text-gray-600 dark:text-gray-300 italic mb-4">"I sold my old gaming console using SecureSwap. The buyer paid upfront into escrow, and I shipped it without any fear. Highly recommended!"</p>
+                        <p class="font-semibold text-gray-800 dark:text-white">- Priya S.</p><p class="text-sm text-gray-500 dark:text-gray-400">Online Seller</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="faq" class="py-16 md:py-24 bg-gray-50 dark:bg-gray-900 transition-colors duration-300 overflow-hidden">
+            <div class="container mx-auto px-6 max-w-3xl">
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white text-center mb-12 animate-on-scroll">Frequently Asked Questions</h2>
+                 <div id="faq-container" class="space-y-4">
+                    </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-gray-900 dark:bg-black text-gray-400 dark:text-gray-500 py-12 transition-colors duration-300">
+        <div class="container mx-auto px-6">
+            <div class="grid md:grid-cols-3 gap-8">
+                <div><h4 class="text-xl font-bold text-white dark:text-gray-200 mb-4">SecureSwap</h4><p>Making the internet a trustworthy marketplace, one secure transaction at a time.</p></div>
+                <div><h4 class="text-lg font-semibold text-white dark:text-gray-200 mb-4">Quick Links</h4><ul class="space-y-2"><li><a href="#process" class="hover:text-white dark:hover:text-blue-400 transition duration-300">How It Works</a></li><li><a href="#why" class="hover:text-white dark:hover:text-blue-400 transition duration-300">Why Choose Us</a></li><li><a href="#faq" class="hover:text-white dark:hover:text-blue-400 transition duration-300">FAQs</a></li><li><a href="other_pages/terms.html" class="hover:text-white dark:hover:text-blue-400 transition duration-300">Terms of Service</a></li><li><a href="other_pages/privacy.html" class="hover:text-white dark:hover:text-blue-400 transition duration-300">Privacy Policy</a></li>
+<li><a href="other_pages/cancellation-refund.html" class="hover:text-white dark:hover:text-blue-400 transition duration-300">Cancellations & Refund</a></li>
+</ul></div>
+                <div><h4 class="text-lg font-semibold text-white dark:text-gray-200 mb-4">Connect With Us</h4><p class="mb-4"><a href="mailto:support@secureswap.in" class="hover:text-white dark:hover:text-blue-400 transition duration-300">support@secureswap.in</a>	</p></div>
+            </div>
+            <div class="mt-8 pt-8 border-t border-gray-700 dark:border-gray-800 text-center text-sm">&copy; <span id="copyright-year">2024</span> SecureSwap. All rights reserved. Built with ❤️ in India.</div>
+        </div>
+    </footer>
+
+    <script>
+      'use strict';
+      // --- Firebase Config ---
+      // PASTE YOUR ACTUAL FIREBASE CONFIG OBJECT HERE!
+      const firebaseConfig = {
+  apiKey: "AIzaSyCWNCws7n00a4IjQ_X08tXUxdbUx4P5XtI",
+  authDomain: "ss-local-4917d.firebaseapp.com",
+  projectId: "ss-local-4917d",
+  storageBucket: "ss-local-4917d.firebasestorage.app",
+  messagingSenderId: "1045208651336",
+  appId: "1:1045208651336:web:3dfe51cf192488aaa36a7d",
+  measurementId: "G-CHR2TXTNCN"
+};
+
+      // --- Initialize Firebase ---
+      let app, auth, db;
+      try {
+          if (typeof firebase === 'undefined' || !firebase.initializeApp) {
+              throw new Error("Firebase SDK not loaded correctly. Check script tags in <head>.");
+          }
+          app = firebase.initializeApp(firebaseConfig);
+          auth = firebase.auth();
+          db = firebase.firestore();
+          console.log("Firebase Initialized Successfully (Index Page).");
+      } catch (e) {
+          console.error("FIREBASE INIT FAILED:", e);
+          // Display error prominently if Firebase fails to initialize
+          document.body.insertAdjacentHTML('afterbegin', '<div style="position: fixed; top:0; left:0; width: 100%; padding: 10px; background-color: red; color: white; text-align: center; z-index: 9999;">CRITICAL ERROR: Could not initialize Firebase. Check console and Firebase configuration in the script.</div>');
+          // Stop further script execution might be needed depending on the error
+          // throw e; // Uncomment this line to completely stop if Firebase is critical for basic rendering
+      }
+
+      // --- Wait for DOM Ready ---
+      document.addEventListener('DOMContentLoaded', () => {
+          console.log("DOM Loaded (Index Page).");
+          try {
+              // --- Data Definitions (Landing Page) ---
+              const targetUsersData = [
+                  // Assuming imgFile names match the text but lowercase and .svg
+                  { name: 'Physical Goods', color: 'blue', text: 'Goods', imgFile: 'goods.svg' },
+                  { name: 'Digital Vouchers', color: 'green', text: 'Vouchers', imgFile: 'vouchers.svg' },
+                  { name: 'Event Tickets', color: 'yellow', text: 'Tickets', imgFile: 'tickets.svg' },
+                  { name: 'Coupons/Gift Cards', color: 'red', text: 'Coupons', imgFile: 'coupons.svg' },
+                  { name: 'In-Game Items', color: 'indigo', text: 'Gaming', imgFile: 'gaming.svg' },
+                  { name: 'Sneakerheads', color: 'purple', text: 'Sneakers', imgFile: 'sneakers.svg' },
+                  { name: 'Resellers', color: 'gray', text: 'Resellers', imgFile: 'resellers.svg' },
+                  { name: 'Freelancers', color: 'emerald', text: 'Freelance', imgFile: 'freelance.svg' },
+              ];
+              const trustBadgesData = [
+                  { title: "Funds Held in Escrow", description: "Money is only released when the deal is complete and both parties are satisfied.", icon: '🛡️', color: 'blue', delayClass: 'delay-1' },
+                  { title: "Both Parties Are Verified", description: "Reduce fraud with verified accounts, adding an extra layer of security.", icon: '🪪', color: 'emerald', delayClass: 'delay-2' },
+                  { title: "Instant Refunds Guarantee", description: "If something goes wrong, benefit from our 100% money-back guarantee.", icon: '🪙', color: 'amber', delayClass: 'delay-3' },
+              ];
+              const faqData = [
+                  { q: "How does the escrow work?", a: "When a buyer initiates a transaction, the funds are transferred to SecureSwap's secure holding account (escrow). We hold the funds until the seller fulfills their part of the deal (e.g., ships the item, delivers the service) and the buyer confirms receipt or satisfaction. Only then are the funds released to the seller." },
+                  { q: "What fees does SecureSwap charge?", a: "We charge a small percentage-based service fee on each successful transaction. This fee covers the cost of providing the secure platform, verification, and dispute resolution. The exact fee structure is transparently displayed before you confirm a transaction." },
+                  { q: "What happens if there's a dispute?", a: "SecureSwap offers a dispute resolution process. If the buyer and seller cannot agree, they can raise a dispute. Our team will review the evidence provided by both parties (communication logs, shipping proof, etc.) and make a fair decision based on our terms of service. Funds may be returned to the buyer or released to the seller depending on the outcome." },
+                  { q: "Is SecureSwap available outside India?", a: "Currently, SecureSwap is focused on facilitating secure P2P transactions within India. We are exploring options for international expansion in the future." }
+              ];
+              const delayClasses = ['delay-1', 'delay-2', 'delay-3', 'delay-4', 'delay-5'];
+
+              // --- Landing Page Specific Content Generation ---
+              function initializeLandingPageContent() {
+                  console.log("Attempting to initialize landing page dynamic content...");
+
+                  // Target Users Grid
+                  const targetUsersGrid = document.getElementById('target-users-grid');
+                  if (targetUsersGrid) {
+                    targetUsersData.forEach((item, index) => {
+                      try {
+                        const containerDiv = document.createElement('div');
+                        containerDiv.className = 'text-center animate-on-scroll';
+                        containerDiv.classList.add(delayClasses[index % delayClasses.length]);
+                        const img = document.createElement('img');
+                        img.src = `./src/images/${item.imgFile}`; // Path relative to HTML file
+                        img.alt = `${item.name} Icon`;
+                        img.className = `mx-auto mb-3 rounded-[28px] bg-${item.color}-400 dark:bg-${item.color}-500 p-4 transition transform hover:scale-110 h-20 w-20 object-contain`;
+                        img.width = 80; img.height = 80;
+                        img.onerror = function() { this.onerror=null; this.src=`https://placehold.co/80x80/CCCCCC/FFFFFF?text=${item.text}`; console.warn(`Image not found: ./src/images/${item.imgFile}`); };
+                        const p = document.createElement('p');
+                        p.className = 'font-medium text-gray-700 dark:text-gray-300'; p.textContent = item.name;
+                        containerDiv.appendChild(img); containerDiv.appendChild(p);
+                        targetUsersGrid.appendChild(containerDiv);
+                      } catch (e) { console.error(`Error creating target user item '${item.name}':`, e); }
+                    });
+                    console.log("Target users grid populated.");
+                  } else { console.error("CRITICAL: Target users grid container (#target-users-grid) not found in HTML!"); }
+
+                  // Trust Badges Grid
+                  const trustBadgesGrid = document.getElementById('trust-badges-grid');
+                  if (trustBadgesGrid) {
+                    trustBadgesData.forEach((badge) => {
+                      try {
+                        const containerDiv = document.createElement('div');
+                        containerDiv.className = `flex items-start space-x-4 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1 animate-on-scroll ${badge.delayClass}`;
+                        const iconWrapper = document.createElement('div');
+                        iconWrapper.className = `flex-shrink-0 bg-${badge.color}-600 dark:bg-${badge.color}-500 text-white rounded-full p-3`;
+                        const iconSpan = document.createElement('span');
+                        iconSpan.className = 'lucide text-2xl'; iconSpan.setAttribute('aria-hidden', 'true'); iconSpan.textContent = badge.icon;
+                        iconWrapper.appendChild(iconSpan);
+                        const textWrapper = document.createElement('div');
+                        const titleH3 = document.createElement('h3');
+                        titleH3.className = 'text-xl font-semibold text-gray-900 dark:text-white mb-1'; titleH3.textContent = badge.title;
+                        const descP = document.createElement('p');
+                        descP.className = 'text-gray-600 dark:text-gray-300'; descP.textContent = badge.description;
+                        textWrapper.appendChild(titleH3); textWrapper.appendChild(descP);
+                        containerDiv.appendChild(iconWrapper); containerDiv.appendChild(textWrapper);
+                        trustBadgesGrid.appendChild(containerDiv);
+                      } catch (e) { console.error(`Error creating trust badge '${badge.title}':`, e); }
+                    });
+                     console.log("Trust badges grid populated.");
+                  } else { console.error("CRITICAL: Trust badges grid container (#trust-badges-grid) not found in HTML!"); }
+
+                  // FAQ Container
+                  const faqContainer = document.getElementById('faq-container');
+                  if (faqContainer) {
+                    faqData.forEach((faq, index) => {
+                      try {
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'bg-white dark:bg-gray-800 p-5 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 faq-item animate-on-scroll';
+                        itemDiv.classList.add(delayClasses[index % delayClasses.length]);
+                        const questionDiv = document.createElement('div');
+                        questionDiv.className = 'flex justify-between items-center faq-question';
+                        questionDiv.setAttribute('role', 'button'); questionDiv.setAttribute('tabindex', '0');
+                        questionDiv.setAttribute('aria-expanded', 'false'); questionDiv.setAttribute('aria-controls', `faq-answer-${index}`);
+                        const questionH3 = document.createElement('h3');
+                        questionH3.className = 'text-lg font-semibold text-gray-800 dark:text-white pointer-events-none'; questionH3.textContent = faq.q;
+                        const iconSpan = document.createElement('span');
+                        iconSpan.className = 'lucide text-blue-600 dark:text-blue-500 text-xl transform transition-transform duration-300 faq-icon pointer-events-none';
+                        iconSpan.setAttribute('aria-hidden', 'true'); iconSpan.textContent = '↓';
+                        questionDiv.appendChild(questionH3); questionDiv.appendChild(iconSpan);
+                        const answerDiv = document.createElement('div');
+                        answerDiv.id = `faq-answer-${index}`; answerDiv.className = 'faq-answer mt-3 text-gray-600 dark:text-gray-300';
+                        answerDiv.setAttribute('role', 'region');
+                        const answerP = document.createElement('p'); answerP.textContent = faq.a;
+                        answerDiv.appendChild(answerP);
+                        itemDiv.appendChild(questionDiv); itemDiv.appendChild(answerDiv);
+                        faqContainer.appendChild(itemDiv);
+                      } catch (e) { console.error(`Error creating FAQ item '${faq.q}':`, e); }
+                    });
+                    setupFaqAccordion(); // Setup listeners AFTER adding elements
+                    console.log("FAQ container populated and listeners attached.");
+                  } else { console.error("CRITICAL: FAQ container (#faq-container) not found in HTML!"); }
+
+                  // Re-run observer for dynamically added elements
+                  // This ensures animations trigger for content added after initial load
+                  initializeIntersectionObserver();
+
+              } // --- End of initializeLandingPageContent ---
+
+
+              // --- FAQ Accordion Setup Function ---
+              function setupFaqAccordion() {
+                  // Select items within the specific container
+                  const faqItemsNodeList = document.querySelectorAll('#faq-container .faq-item');
+                  if (!faqItemsNodeList || faqItemsNodeList.length === 0) {
+                      console.warn("No FAQ items found to attach listeners to.");
+                      return;
+                  }
+                  faqItemsNodeList.forEach(item => {
+                      const question = item.querySelector('.faq-question');
+                      const answer = item.querySelector('.faq-answer');
+                      const icon = item.querySelector('.faq-icon');
+                      if (question && answer && icon) {
+                          question.addEventListener('click', () => {
+                              const isOpen = answer.classList.toggle('open');
+                              question.setAttribute('aria-expanded', String(isOpen));
+                              icon.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+                          });
+                          question.addEventListener('keydown', (event) => {
+                              if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); question.click(); }
+                          });
+                      } else {
+                          console.warn("Skipping FAQ item due to missing elements:", item);
+                      }
+                  });
+              }
+
+              // --- Theme Toggle ---
+              const themeToggle = document.getElementById('checkbox');
+              const themeToggleMobile = document.getElementById('checkbox-mobile');
+              const htmlElement = document.documentElement;
+              function setTheme(isDark) {
+                  if (isDark) { htmlElement.classList.add('dark'); } else { htmlElement.classList.remove('dark'); }
+                  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                  if (themeToggle) themeToggle.checked = isDark;
+                  if (themeToggleMobile) themeToggleMobile.checked = isDark;
+              }
+              const isInitiallyDark = htmlElement.classList.contains('dark');
+              if (themeToggle) themeToggle.checked = isInitiallyDark;
+              if (themeToggleMobile) themeToggleMobile.checked = isInitiallyDark;
+              if (themeToggle) { themeToggle.addEventListener('change', () => setTheme(themeToggle.checked)); }
+              if (themeToggleMobile) { themeToggleMobile.addEventListener('change', () => setTheme(themeToggleMobile.checked)); }
+
+              // --- Mobile Menu ---
+              const menuButton = document.getElementById('mobile-menu-button');
+              const mobileMenu = document.getElementById('mobile-menu');
+              const menuIconSpan = menuButton?.querySelector('.menu-icon-content');
+              if (menuButton && mobileMenu && menuIconSpan) {
+                  menuButton.addEventListener('click', () => {
+                      const isHidden = mobileMenu.classList.toggle('hidden');
+                      menuIconSpan.innerHTML = isHidden ? '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-menu-icon lucide-menu"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>' : '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x-icon lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';
+                      menuButton.setAttribute('aria-expanded', String(!isHidden));
+                  });
+                  mobileMenu.querySelectorAll('a').forEach(link => {
+                      link.addEventListener('click', () => {
+                          // Only close if it's a link within the page (#...)
+                          if (link.getAttribute('href')?.startsWith('#')) {
+                              mobileMenu.classList.add('hidden');
+                              menuIconSpan.innerHTML = '&#xe9a9;';
+                              menuButton.setAttribute('aria-expanded', 'false');
+                          }
+                          // Allow external links (like login) to navigate without closing immediately
+                      });
+                  });
+              }
+
+              // --- Intersection Observer ---
+              // Moved initialization into a function to call after dynamic content is added
+              function initializeIntersectionObserver() {
+                  if ('IntersectionObserver' in window) {
+                      const observerOptions = { root: null, rootMargin: '0px', threshold: 0.1 };
+                      const observerCallback = (entries, observer) => {
+                          entries.forEach(entry => {
+                              if (entry.isIntersecting) {
+                                  entry.target.classList.add('is-visible');
+                                  observer.unobserve(entry.target);
+                              }
+                          });
+                      };
+                      const observer = new IntersectionObserver(observerCallback, observerOptions);
+                      // Observe all elements with the class *currently* in the DOM
+                      document.querySelectorAll('.animate-on-scroll').forEach(el => observer.observe(el));
+                      console.log("Intersection Observer initialized/re-initialized.");
+                  } else {
+                      console.warn("IntersectionObserver not supported, scroll animations disabled.");
+                      document.querySelectorAll('.animate-on-scroll').forEach(el => el.classList.add('is-visible'));
+                  }
+              }
+              initializeIntersectionObserver(); // Initial call for static elements
+
+
+              // --- Copyright Year ---
+              const yearSpan = document.getElementById('copyright-year');
+              if (yearSpan) { yearSpan.textContent = new Date().getFullYear(); }
+
+              // --- Firebase Auth State Listener (Optional for index page) ---
+              // You might want to show different header options if logged in
+              if (auth) {
+                  auth.onAuthStateChanged(user => {
+                      if (user) { console.log("User is signed in (Index Page):", user.email); /* Can update UI */ }
+                      else { console.log("User is signed out (Index Page)."); /* Can update UI */ }
+                  });
+              }
+
+              // --- Initialize Landing Page Content ---
+              // Ensure Firebase is ready before potentially using db/auth inside this function if needed later
+              if (app && auth && db) {
+                 initializeLandingPageContent(); // Call the function to generate dynamic sections
+              } else {
+                  console.error("Cannot initialize landing page content because Firebase failed to initialize.");
+              }
+
+          } catch (error) {
+              console.error("Error during DOMContentLoaded setup (Index Page):", error);
+              const mainElement = document.querySelector('main');
+              if (mainElement) mainElement.innerHTML = '<p style="color: red; text-align: center; padding: 20px;">Sorry, an error occurred while loading the page content. Please check the console.</p>';
+          }
+      }); // End DOMContentLoaded
+    </script>
+
+</body>
+</html>

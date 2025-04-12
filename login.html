@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - SecureSwap</title>
+    <link rel="shortcut icon" sizes="64x64" href="./src/images/fav_logo.png" type="image/x-icon">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style> /* ... (Keep exact same CSS as before) ... */
+      /* Lucide Icons Font Face */ @font-face { font-family: 'LucideIcons'; src: url(https://cdn.jsdelivr.net/npm/lucide-static@latest/font/Lucide.ttf) format('truetype'); } .lucide { font-family: 'LucideIcons'; font-style: normal; font-weight: normal; font-variant: normal; text-rendering: auto; line-height: 1; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; display: inline-block; } html { scroll-behavior: smooth; } .theme-switch-wrapper { display: flex; align-items: center; gap: 8px; } .theme-switch { display: inline-block; height: 24px; position: relative; width: 44px; } .theme-switch input { display:none; } .slider { background-color: #ccc; bottom: 0; cursor: pointer; left: 0; position: absolute; right: 0; top: 0; transition: .4s; } .slider:before { background-color: #fff; bottom: 4px; content: ""; height: 16px; left: 4px; position: absolute; transition: .4s; width: 16px; } input:checked + .slider { background-color: #3B82F6; } input:checked + .slider:before { transform: translateX(20px); } .slider.round { border-radius: 24px; } .slider.round:before { border-radius: 50%; } html.dark .dark-mode-icon { color: #F59E0B; } html:not(.dark) .light-mode-icon { color: #F59E0B; } body { font-family: 'Inter', sans-serif; } .form-message { transition: opacity 0.3s ease-in-out; }
+    </style>
+    <script type="text/tailwindcss-config"> /* ... (Keep exact same config as before) ... */ { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'], }, } } } </script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script> /* ... (Keep exact same initial theme script as before) ... */ (function() { try { const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches; const savedTheme = localStorage.getItem('theme'); if (savedTheme === 'dark' || (!savedTheme && prefersDark)) { document.documentElement.classList.add('dark'); } else { document.documentElement.classList.remove('dark'); } } catch (e) { console.error("Error applying initial theme:", e); } })(); </script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-200 antialiased transition-colors duration-300 flex flex-col min-h-screen">
+
+    <header class="bg-white dark:bg-gray-800 shadow-sm">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="/" class="text-2xl font-bold text-blue-600 dark:text-blue-500">SecureSwap</a>
+            
+        </nav>
+    </header>
+
+    <main class="flex-grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-md w-full space-y-8 bg-white dark:bg-gray-800 p-10 rounded-xl shadow-lg">
+            <div><h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">Login to your account</h2></div>
+            <form class="mt-8 space-y-6" action="#" method="POST" id="login-form">
+                <input type="hidden" name="remember" value="true">
+                <div class="rounded-md shadow-sm -space-y-px">
+                    <div><label for="email-address" class="sr-only">Email address</label><input id="email-address" name="email" type="email" autocomplete="email" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm" placeholder="Email address"></div>
+                    <div><label for="password" class="sr-only">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 placeholder-gray-500 text-gray-900 dark:text-white bg-white dark:bg-gray-700 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm" placeholder="Password"></div>
+                </div>
+                <div class="flex items-center justify-between"><div class="text-sm"><a href="./forgot-password.html" class="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">Forgot your password?</a></div></div>
+                <div id="login-error" class="form-message text-sm hidden mt-2 text-center"></div>
+                <div><button type="submit" class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800">Sign in</button></div>
+            </form>
+            <div class="relative my-6"><div class="absolute inset-0 flex items-center" aria-hidden="true"><div class="w-full border-t border-gray-300 dark:border-gray-600"></div></div><div class="relative flex justify-center text-sm"><span class="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">OR</span></div></div>
+            <div><a href="#" class="google-signin-button group relative w-full flex justify-center items-center py-2 px-4 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800"><svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" /><path d="M12 5.38c1.63 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /><path d="M1 1h22v22H1z" fill="none" /></svg>Sign in with Google</a></div>
+            <div class="text-sm text-center"><p class="text-gray-600 dark:text-gray-400">Don't have an account? <a href="./signup.html" class="font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300">Sign up</a></p></div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-100 dark:bg-gray-800 mt-auto">
+       <div class="container mx-auto px-6 py-4 text-center text-gray-600 dark:text-gray-400 text-sm">&copy; <span id="copyright-year">2024</span> SecureSwap. All rights reserved.</div>
+   </footer>
+
+    <script>
+      'use strict';
+      // --- Firebase Config ---
+      // PASTE YOUR ACTUAL FIREBASE CONFIG OBJECT HERE!
+     const firebaseConfig = {
+  apiKey: "AIzaSyCWNCws7n00a4IjQ_X08tXUxdbUx4P5XtI",
+  authDomain: "ss-local-4917d.firebaseapp.com",
+  projectId: "ss-local-4917d",
+  storageBucket: "ss-local-4917d.firebasestorage.app",
+  messagingSenderId: "1045208651336",
+  appId: "1:1045208651336:web:3dfe51cf192488aaa36a7d",
+  measurementId: "G-CHR2TXTNCN"
+};
+
+      // --- Initialize Firebase ---
+      let app, auth; // No db needed here
+      try {
+        if (typeof firebase === 'undefined' || !firebase.initializeApp) { throw new Error("Firebase SDK not loaded correctly."); }
+        app = firebase.initializeApp(firebaseConfig);
+        auth = firebase.auth();
+        console.log("Firebase Initialized Successfully (Login Page).");
+      } catch (e) {
+        console.error("FIREBASE INIT FAILED:", e);
+        document.body.innerHTML = '<div style="padding: 20px; text-align: center; color: red; background-color: white;">CRITICAL ERROR: Could not initialize Firebase. Check console and config.</div>';
+        throw e; // Stop script
+      }
+
+      // --- Wait for DOM Ready ---
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log("DOM Loaded (Login Page).");
+        try {
+          // --- Theme Toggle ---
+          const themeToggle = document.getElementById('checkbox');
+          const htmlElement = document.documentElement;
+          function setTheme(isDark) { if (isDark) { htmlElement.classList.add('dark'); } else { htmlElement.classList.remove('dark'); } localStorage.setItem('theme', isDark ? 'dark' : 'light'); if (themeToggle) themeToggle.checked = isDark; }
+          const isInitiallyDark = htmlElement.classList.contains('dark');
+          if (themeToggle) { themeToggle.checked = isInitiallyDark; themeToggle.addEventListener('change', () => setTheme(themeToggle.checked)); }
+
+          // --- Copyright Year ---
+          const yearSpan = document.getElementById('copyright-year');
+          if (yearSpan) { yearSpan.textContent = new Date().getFullYear(); }
+
+          // --- Firebase Auth State Listener ---
+          if (auth) { auth.onAuthStateChanged(user => { if (user) { console.log("User already signed in:", user.email); window.location.href = './dashboard.html'; /* Redirect if logged in */ } else { console.log("User is signed out."); } }); }
+
+          // --- Auth Page Specific JS ---
+          function showMessage(formElement, message, isError = true) { let messageDiv = formElement?.querySelector('.form-message') || document.getElementById('login-error'); if (messageDiv) { messageDiv.textContent = message; messageDiv.classList.remove('hidden'); if (isError) { messageDiv.className = 'form-message text-sm mt-2 text-center text-red-500 dark:text-red-400'; } else { messageDiv.className = 'form-message text-sm mt-2 text-center text-green-600 dark:text-green-400'; } } else { console.warn("Message div not found"); alert(message); } }
+
+          // --- Login Form Handler ---
+          const loginForm = document.getElementById('login-form');
+          if (loginForm && auth) {
+              loginForm.addEventListener('submit', (event) => {
+                  event.preventDefault();
+                  const messageDiv = loginForm.querySelector('.form-message') || document.getElementById('login-error');
+                  if (messageDiv) messageDiv.classList.add('hidden');
+                  const emailInput = loginForm.querySelector('#email-address');
+                  const passwordInput = loginForm.querySelector('#password');
+                  const email = emailInput ? emailInput.value.trim() : '';
+                  const password = passwordInput ? passwordInput.value : '';
+                  if (!email || !password) { showMessage(loginForm, 'Please fill in both email and password.'); return; }
+
+                  auth.signInWithEmailAndPassword(email, password)
+                      .then((userCredential) => {
+                          console.log('Login successful:', userCredential.user.email);
+                          showMessage(loginForm, 'Login successful! Redirecting...', false);
+                          // *** REDIRECT TO DASHBOARD ***
+                          window.location.href = './dashboard.html';
+                      })
+                      .catch((error) => {
+                          console.error("Firebase Login Error:", error.code, error.message);
+                          let friendlyMessage = 'Login failed. Please check credentials.';
+                          if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') { friendlyMessage = 'Invalid email or password.'; }
+                          else if (error.code === 'auth/invalid-email') { friendlyMessage = 'Please enter a valid email address.'; }
+                          showMessage(loginForm, friendlyMessage);
+                      });
+              });
+          } else if (!loginForm) { console.warn("Login form (#login-form) not found."); }
+
+          // --- Google Sign-In Link Handler ---
+          const googleSignInLinks = document.querySelectorAll('a.google-signin-button');
+          if (googleSignInLinks.length > 0 && auth) {
+              const provider = new firebase.auth.GoogleAuthProvider();
+              googleSignInLinks.forEach(link => {
+                  link.addEventListener('click', (event) => {
+                      event.preventDefault();
+                      auth.signInWithPopup(provider)
+                          .then((result) => {
+                              console.log('Google Sign-In Successful:', result.user.email);
+                              showMessage(link.closest('div.max-w-md') || document.body, 'Google Sign-In Successful! Redirecting...', false);
+                              // *** REDIRECT TO DASHBOARD ***
+                              window.location.href = './dashboard.html';
+                          }).catch((error) => {
+                              console.error("Firebase Google Sign-In Error:", error);
+                              let friendlyMessage = 'Google Sign-In failed. Please try again.';
+                              if (error.code === 'auth/account-exists-with-different-credential') { friendlyMessage = 'Account exists with different sign-in method.'; }
+                              else if (error.code === 'auth/popup-closed-by-user') { friendlyMessage = 'Sign-in popup closed.'; }
+                              showMessage(link.closest('div.max-w-md') || document.body, friendlyMessage);
+                          });
+                  });
+              });
+          } else if (googleSignInLinks.length === 0) { console.warn("Google sign-in button/link (.google-signin-button) not found."); }
+
+        } catch (error) {
+            console.error("Error during DOMContentLoaded setup (Login Page):", error);
+        }
+      }); // End DOMContentLoaded
+    </script>
+
+</body>
+</html>

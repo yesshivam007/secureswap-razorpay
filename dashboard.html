@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - SecureSwap</title>
+    <link rel="shortcut icon" sizes="64x64" href="./src/images/fav_logo.png" type="image/x-icon">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+      /* Lucide Icons Font Face */
+      @font-face { font-family: 'LucideIcons'; src: url(https://cdn.jsdelivr.net/npm/lucide-static@latest/font/Lucide.ttf) format('truetype'); }
+      .lucide { font-family: 'LucideIcons'; font-style: normal; font-weight: normal; font-variant: normal; text-rendering: auto; line-height: 1; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; display: inline-block; }
+      /* Smooth Scroll */
+      html { scroll-behavior: smooth; }
+      /* Dark Mode Toggle */
+      .theme-switch-wrapper { display: flex; align-items: center; gap: 8px; }
+      .theme-switch { display: inline-block; height: 24px; position: relative; width: 44px; }
+      .theme-switch input { display:none; }
+      .slider { background-color: #ccc; bottom: 0; cursor: pointer; left: 0; position: absolute; right: 0; top: 0; transition: .4s; }
+      .slider:before { background-color: #fff; bottom: 4px; content: ""; height: 16px; left: 4px; position: absolute; transition: .4s; width: 16px; }
+      input:checked + .slider { background-color: #3B82F6; }
+      input:checked + .slider:before { transform: translateX(20px); }
+      .slider.round { border-radius: 24px; } .slider.round:before { border-radius: 50%; }
+      html.dark .dark-mode-icon { color: #F59E0B; } html:not(.dark) .light-mode-icon { color: #F59E0B; }
+      /* Base body styles */
+      body { font-family: 'Inter', sans-serif; }
+      /* Responsive Table/Card Styles */
+      .transaction-table th, .transaction-table td { @apply px-4 py-2 text-left border-b border-gray-200 dark:border-gray-700 hidden md:table-cell; } /* Hide cells by default on small screens */
+      .transaction-table th { @apply text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap; }
+      .transaction-table td { @apply text-sm text-gray-900 dark:text-gray-100; }
+      .transaction-table tbody tr:hover { @apply bg-gray-50 dark:bg-gray-800/50; }
+      .transaction-card { @apply block md:hidden border border-gray-200 dark:border-gray-700 rounded-lg p-4 mb-3 bg-white dark:bg-gray-800 shadow; } /* Card styles */
+      .transaction-card div { @apply mb-2 flex justify-between; } /* Layout inside card */
+      .transaction-card span:first-child { @apply text-sm font-medium text-gray-500 dark:text-gray-400; } /* Label style */
+      .transaction-card span:last-child { @apply text-sm text-gray-900 dark:text-white text-right; } /* Value style */
+      .transaction-card .action-link { @apply text-blue-600 dark:text-blue-400 hover:underline font-medium; } /* Action link style */
+      /* Status Badge Styles */
+      .status-badge { @apply inline-block px-2.5 py-0.5 rounded-full text-xs font-medium capitalize whitespace-nowrap; }
+      .status-pending_acceptance { @apply bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300; }
+      .status-awaiting_payment { @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300; }
+      .status-awaiting_shipment { @apply bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300; }
+      .status-shipped { @apply bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300; }
+      .status-awaiting_confirmation { @apply bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300; }
+      .status-completed { @apply bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300; }
+      .status-disputed { @apply bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300; }
+      .status-cancelled { @apply bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300; }
+      .status-rejected { @apply bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300; }
+      .status-unknown { @apply bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300; }
+      /* Loading/Empty State */
+      .loading-placeholder, .empty-state { @apply text-center py-10 text-gray-500 dark:text-gray-400; }
+      .loading-placeholder td, .empty-state td { @apply text-center; } /* Center text within table cell */
+    </style>
+
+    <script type="text/tailwindcss-config">
+      {
+        darkMode: 'class',
+        theme: { extend: { fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'], }, } }
+      }
+    </script>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <script>
+      (function() {
+        try {
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          const savedTheme = localStorage.getItem('theme');
+          if (savedTheme === 'dark' || (!savedTheme && prefersDark)) { document.documentElement.classList.add('dark'); }
+          else { document.documentElement.classList.remove('dark'); }
+        } catch (e) { console.error("Error applying initial theme:", e); }
+      })();
+    </script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-200 antialiased transition-colors duration-300 min-h-screen flex flex-col">
+
+    <header class="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-50 transition-colors duration-300">
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <a href="/" class="text-2xl font-bold text-blue-600 dark:text-blue-500">SecureSwap</a>
+            <div class="flex space-x-4 items-center">
+                <div id="user-info" class="text-sm text-gray-600 dark:text-gray-300 hidden items-center">
+                    <span class="lucide mr-1 text-lg my-[-6px]"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+</svg>
+</span> 
+<span id="user-display-name" class="font-medium">User</span> <button id="logout-button" class="ml-4 text-red-600 dark:text-red-400 hover:underline focus:outline-none text-sm"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-log-out-icon lucide-log-out"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg></button>
+                </div>
+                 
+            </div>
+        </nav>
+    </header>
+
+    <main class="flex-grow container mx-auto px-6 py-8">
+        <div id="initial-loading" class="text-center py-10 text-gray-500 dark:text-gray-400">Loading dashboard...</div>
+
+        <div id="dashboard-content" class="hidden">
+            <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Your Dashboard</h1>
+                <a href="./new-transaction.html" class="bg-blue-600 text-white px-5 py-2 rounded-lg font-medium hover:bg-blue-700 transition duration-300 transform hover:scale-105 whitespace-nowrap"> Start New SecureSwap</a>
+            </div>
+
+            <section id="active-transactions" class="mb-12">
+                <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Active Transactions</h2>
+                <div id="active-transactions-container">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto hidden md:block">
+                        <table class="min-w-full transaction-table">
+                            <thead>
+                                <tr><th>Item/Service</th><th>Other Party</th><th>Role</th><th>Amount (INR)</th><th>Status</th><th>Action</th></tr>
+                            </thead>
+                            <tbody id="active-transactions-list-table">
+                                <tr id="active-loading-table"><td colspan="6" class="loading-placeholder">Loading...</td></tr>
+                                <tr id="active-empty-table" class="hidden"><td colspan="6" class="empty-state">No active transactions.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="active-transactions-list-cards" class="space-y-3 md:hidden">
+                         <div id="active-loading-cards" class="loading-placeholder">Loading...</div>
+                         <div id="active-empty-cards" class="empty-state hidden">No active transactions.</div>
+                        </div>
+                </div>
+            </section>
+
+            <section id="past-transactions">
+                <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Past Transactions</h2>
+                <div id="past-transactions-container">
+                     <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-x-auto hidden md:block">
+                        <table class="min-w-full transaction-table">
+                            <thead>
+                                <tr><th>Item/Service</th><th>Other Party</th><th>Role</th><th>Amount (INR)</th><th>Final Status</th><th>Date</th></tr>
+                            </thead>
+                            <tbody id="past-transactions-list-table">
+                                <tr id="past-loading-table"><td colspan="6" class="loading-placeholder">Loading...</td></tr>
+                                <tr id="past-empty-table" class="hidden"><td colspan="6" class="empty-state">No past transactions.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                     <div id="past-transactions-list-cards" class="space-y-3 md:hidden">
+                        <div id="past-loading-cards" class="loading-placeholder">Loading...</div>
+                        <div id="past-empty-cards" class="empty-state hidden">No past transactions.</div>
+                        </div>
+                </div>
+            </section>
+        </div> </main>
+
+    <footer class="bg-gray-100 dark:bg-gray-800 mt-12">
+       <div class="container mx-auto px-6 py-4 text-center text-gray-600 dark:text-gray-400 text-sm"> &copy; <span id="copyright-year">2024</span> SecureSwap. All rights reserved. </div>
+   </footer>
+
+    <script>
+      'use strict';
+      // --- Firebase Config ---
+      // PASTE YOUR ACTUAL FIREBASE CONFIG OBJECT HERE!
+      const firebaseConfig = {
+  apiKey: "AIzaSyCWNCws7n00a4IjQ_X08tXUxdbUx4P5XtI",
+  authDomain: "ss-local-4917d.firebaseapp.com",
+  projectId: "ss-local-4917d",
+  storageBucket: "ss-local-4917d.firebasestorage.app",
+  messagingSenderId: "1045208651336",
+  appId: "1:1045208651336:web:3dfe51cf192488aaa36a7d",
+  measurementId: "G-CHR2TXTNCN"
+};
+
+      // --- Initialize Firebase ---
+      let app, auth, db;
+      try {
+        if (typeof firebase === 'undefined' || !firebase.initializeApp) { throw new Error("Firebase SDK not loaded correctly."); }
+        app = firebase.initializeApp(firebaseConfig);
+        auth = firebase.auth();
+        db = firebase.firestore();
+        console.log("Firebase Initialized Successfully (Dashboard Page).");
+      } catch (e) {
+        console.error("FIREBASE INIT FAILED:", e);
+        const loadingDiv = document.getElementById('initial-loading');
+        if(loadingDiv) loadingDiv.innerHTML = '<p style="color: red;">CRITICAL ERROR: Could not initialize Firebase. Check console and config.</p>';
+        else document.body.insertAdjacentHTML('afterbegin', '<div style="padding: 20px; text-align: center; color: red; background-color: white;">CRITICAL ERROR: Could not initialize Firebase. Check console and config.</div>');
+        throw e; // Stop script
+      }
+
+      // --- Wait for DOM Ready ---
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log("DOM Loaded (Dashboard Page).");
+        try {
+          // --- Elements ---
+          const themeToggle = document.getElementById('checkbox');
+          const htmlElement = document.documentElement;
+          const yearSpan = document.getElementById('copyright-year');
+          const userInfoDiv = document.getElementById('user-info');
+          const userDisplayNameSpan = document.getElementById('user-display-name'); // Changed ID
+          const logoutButton = document.getElementById('logout-button');
+          const initialLoadingDiv = document.getElementById('initial-loading');
+          const dashboardContentDiv = document.getElementById('dashboard-content');
+          // Table List Containers
+          const activeListTable = document.getElementById('active-transactions-list-table');
+          const pastListTable = document.getElementById('past-transactions-list-table');
+          const activeLoadingTable = document.getElementById('active-loading-table');
+          const activeEmptyTable = document.getElementById('active-empty-table');
+          const pastLoadingTable = document.getElementById('past-loading-table');
+          const pastEmptyTable = document.getElementById('past-empty-table');
+          // Card List Containers
+          const activeListCards = document.getElementById('active-transactions-list-cards');
+          const pastListCards = document.getElementById('past-transactions-list-cards');
+          const activeLoadingCards = document.getElementById('active-loading-cards');
+          const activeEmptyCards = document.getElementById('active-empty-cards');
+          const pastLoadingCards = document.getElementById('past-loading-cards');
+          const pastEmptyCards = document.getElementById('past-empty-cards');
+
+          // --- Theme Toggle ---
+          function setTheme(isDark) { if (isDark) { htmlElement.classList.add('dark'); } else { htmlElement.classList.remove('dark'); } localStorage.setItem('theme', isDark ? 'dark' : 'light'); if (themeToggle) themeToggle.checked = isDark; }
+          const isInitiallyDark = htmlElement.classList.contains('dark');
+          if (themeToggle) { themeToggle.checked = isInitiallyDark; themeToggle.addEventListener('change', () => setTheme(themeToggle.checked)); }
+
+          // --- Copyright Year ---
+          if (yearSpan) { yearSpan.textContent = new Date().getFullYear(); }
+
+          // --- Logout Button ---
+          if (logoutButton && auth) {
+            logoutButton.addEventListener('click', () => {
+              if (unsubscribeFirestore) unsubscribeFirestore(); // Stop listener on logout
+              auth.signOut()
+                .then(() => { console.log('User signed out successfully.'); window.location.href = './login.html'; })
+                .catch((error) => { console.error('Sign out error:', error); alert('Error signing out.'); });
+            });
+          }
+
+          // --- Check Bank Details ---
+          async function checkBankDetailsAndProceed(user) {
+              if (!db || !user) return;
+              console.log("Checking bank details for user:", user.uid);
+              try {
+                  const bankDetailsRef = db.collection('bankDetails').doc(user.uid);
+                  const docSnap = await bankDetailsRef.get();
+
+                  if (!docSnap.exists) {
+                      // Bank details missing, redirect to add them
+                      console.log("Bank details not found. Redirecting to bank-details.html");
+                      window.location.href = './bank-details.html';
+                  } else {
+                      // Bank details exist, proceed to load dashboard
+                      console.log("Bank details found. Loading dashboard content.");
+                      if(initialLoadingDiv) initialLoadingDiv.classList.add('hidden');
+                      if(dashboardContentDiv) dashboardContentDiv.classList.remove('hidden');
+                      // Start listening for transactions
+                      if (unsubscribeFirestore) unsubscribeFirestore(); // Clear previous listener just in case
+                      unsubscribeFirestore = listenForTransactions(user.email);
+                  }
+              } catch (error) {
+                  console.error("Error checking bank details:", error);
+                  if(initialLoadingDiv) initialLoadingDiv.textContent = 'Error loading dashboard. Please try again later.';
+                  // Handle error appropriately, maybe allow access anyway or show error
+              }
+          }
+
+
+          // --- Firestore Listener Setup ---
+          let unsubscribeFirestore = null; // To hold the listener cleanup function
+          let allUserTransactions = {}; // Global cache for transactions
+
+          function listenForTransactions(userEmail) {
+              if (!db || !userEmail || !activeListTable || !pastListTable || !activeListCards || !pastListCards) { console.error("Firestore DB or list elements not available."); return () => {}; } // Return dummy unsubscriber
+
+              console.log(`Setting up listeners for ${userEmail}...`);
+              showLoadingPlaceholders(); // Show loading indicators
+
+              const terminalStatuses = ['completed', 'cancelled', 'rejected'];
+              const queryAsBuyer = db.collection('transactions').where('buyerEmail', '==', userEmail);
+              const queryAsSeller = db.collection('transactions').where('sellerEmail', '==', userEmail);
+
+              const unsubBuyer = queryAsBuyer.onSnapshot(snapshot => processSnapshot(snapshot, userEmail), handleFetchError);
+              const unsubSeller = queryAsSeller.onSnapshot(snapshot => processSnapshot(snapshot, userEmail), handleFetchError);
+
+              function processSnapshot(snapshot, currentUserEmail) {
+                  console.log(`Processing snapshot...`);
+                  let hasChanges = false;
+                  snapshot.docChanges().forEach(change => {
+                      hasChanges = true;
+                      const txData = { id: change.doc.id, ...change.doc.data() };
+                      if (change.type === "added" || change.type === "modified") { allUserTransactions[txData.id] = txData; }
+                      if (change.type === "removed") { delete allUserTransactions[txData.id]; }
+                  });
+
+                  // Only re-render if there were actual changes or if it's the initial load
+                  if (hasChanges || Object.keys(allUserTransactions).length === 0) {
+                     renderTransactionLists(currentUserEmail);
+                  }
+                  hideLoadingPlaceholders(); // Hide loading after first successful render
+              }
+
+              function renderTransactionLists(currentUserEmail) {
+                  // Clear existing rows/cards
+                  activeListTable.innerHTML = ''; pastListTable.innerHTML = '';
+                  activeListCards.innerHTML = ''; pastListCards.innerHTML = '';
+                  let activeCount = 0; let pastCount = 0;
+
+                  const sortedTransactions = Object.values(allUserTransactions).sort((a, b) => (b.createdAt?.toDate() || 0) - (a.createdAt?.toDate() || 0));
+
+                  if (sortedTransactions.length === 0) {
+                      showEmptyPlaceholders();
+                  } else {
+                       sortedTransactions.forEach(tx => {
+                           const status = tx?.status || 'unknown';
+                           const isPast = terminalStatuses.includes(status);
+                           if (isPast) {
+                               try {
+                                   pastListTable.appendChild(createTransactionRow(tx, currentUserEmail, true));
+                                   pastListCards.appendChild(createTransactionCard(tx, currentUserEmail, true));
+                                   pastCount++;
+                               } catch (e) { console.error("Error creating past row/card:", e); }
+                           } else {
+                               try {
+                                   activeListTable.appendChild(createTransactionRow(tx, currentUserEmail, false));
+                                   activeListCards.appendChild(createTransactionCard(tx, currentUserEmail, false));
+                                   activeCount++;
+                               } catch (e) { console.error("Error creating active row/card:", e); }
+                           }
+                       });
+                       showEmptyPlaceholders(activeCount === 0, pastCount === 0); // Show empty state if needed
+                  }
+              }
+
+              function handleFetchError(error) {
+                  console.error("Error fetching transactions: ", error);
+                  showEmptyPlaceholders(true, true, 'Error loading transactions.'); // Show error in both sections
+                  hideLoadingPlaceholders();
+              }
+
+              // Return combined unsubscribe function
+              return () => {
+                  console.log("Stopping Firestore listeners.");
+                  unsubBuyer();
+                  unsubSeller();
+              };
+          } // --- End of listenForTransactions ---
+
+
+          // --- Create Table Row Helper ---
+          function createTransactionRow(tx, currentUserEmail, isPast = false) {
+              // ... (Same as previous version) ...
+              if (!tx) return document.createElement('tr');
+              const tr = document.createElement('tr');
+              // Add 'hidden md:table-row' to ensure it's part of the table flow but hidden on small screens
+              tr.className = 'hidden md:table-row';
+              const userRole = tx.buyerEmail === currentUserEmail ? 'Buyer' : 'Seller';
+              const otherPartyEmail = userRole === 'Buyer' ? tx.sellerEmail : tx.buyerEmail;
+              const formattedDate = tx.createdAt?.toDate ? tx.createdAt.toDate().toLocaleDateString() : 'N/A';
+              const status = tx.status || 'unknown';
+              const statusClass = `status-${status}`;
+              const itemTd = document.createElement('td'); itemTd.textContent = tx.itemDescription || 'N/A';
+              const otherPartyTd = document.createElement('td'); otherPartyTd.textContent = otherPartyEmail || 'N/A';
+              const roleTd = document.createElement('td'); roleTd.textContent = userRole;
+              const amountTd = document.createElement('td'); amountTd.textContent = tx.amount ? `₹${tx.amount.toFixed(2)}` : 'N/A';
+              const statusTd = document.createElement('td');
+              const statusBadge = document.createElement('span'); statusBadge.className = `status-badge ${statusClass}`; statusBadge.textContent = status.replace(/_/g, ' '); statusTd.appendChild(statusBadge);
+              tr.appendChild(itemTd); tr.appendChild(otherPartyTd); tr.appendChild(roleTd); tr.appendChild(amountTd); tr.appendChild(statusTd);
+              if (isPast) {
+                  const dateTd = document.createElement('td'); dateTd.textContent = formattedDate; tr.appendChild(dateTd);
+              } else {
+                  const actionTd = document.createElement('td');
+                  const viewLink = document.createElement('a'); viewLink.href = `./transaction-view.html?id=${tx.id || ''}`; viewLink.className = "text-blue-600 dark:text-blue-400 hover:underline"; viewLink.textContent = "View"; actionTd.appendChild(viewLink); tr.appendChild(actionTd);
+              }
+              return tr;
+          }
+
+           // --- Create Card Helper (for mobile) ---
+          function createTransactionCard(tx, currentUserEmail, isPast = false) {
+              if (!tx) return document.createElement('div');
+
+              const card = document.createElement('div');
+              card.className = 'transaction-card'; // Uses styles defined above
+
+              const userRole = tx.buyerEmail === currentUserEmail ? 'Buyer' : 'Seller';
+              const otherPartyEmail = userRole === 'Buyer' ? tx.sellerEmail : tx.buyerEmail;
+              const formattedDate = tx.createdAt?.toDate ? tx.createdAt.toDate().toLocaleDateString() : 'N/A';
+              const status = tx.status || 'unknown';
+              const statusClass = `status-${status}`;
+
+              card.innerHTML = `
+                  <div>
+                      <span>Item:</span>
+                      <span class="truncate font-medium">${tx.itemDescription || 'N/A'}</span>
+                  </div>
+                  <div>
+                      <span>Status:</span>
+                      <span><span class="status-badge ${statusClass}">${status.replace(/_/g, ' ')}</span></span>
+                  </div>
+                  <div>
+                      <span>Amount:</span>
+                      <span class="font-medium">${tx.amount ? `₹${tx.amount.toFixed(2)}` : 'N/A'}</span>
+                  </div>
+                   <div>
+                      <span>Role:</span>
+                      <span>${userRole}</span>
+                  </div>
+                  <div>
+                      <span>Other Party:</span>
+                      <span class="truncate">${otherPartyEmail || 'N/A'}</span>
+                  </div>
+                  ${isPast ? `
+                  <div>
+                      <span>Date:</span>
+                      <span>${formattedDate}</span>
+                  </div>
+                  ` : `
+                  <div class="mt-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+                      <span>Action:</span>
+                      <span><a href="./transaction-view.html?id=${tx.id || ''}" class="action-link">View Details</a></span>
+                  </div>
+                  `}
+              `;
+              return card;
+          }
+
+
+          // --- Show/Hide Loading/Empty Placeholders ---
+          function showLoadingPlaceholders() {
+              if(activeLoadingTable) activeLoadingTable.classList.remove('hidden');
+              if(pastLoadingTable) pastLoadingTable.classList.remove('hidden');
+              if(activeLoadingCards) activeLoadingCards.classList.remove('hidden');
+              if(pastLoadingCards) pastLoadingCards.classList.remove('hidden');
+              if(activeEmptyTable) activeEmptyTable.classList.add('hidden');
+              if(pastEmptyTable) pastEmptyTable.classList.add('hidden');
+              if(activeEmptyCards) activeEmptyCards.classList.add('hidden');
+              if(pastEmptyCards) pastEmptyCards.classList.add('hidden');
+          }
+          function hideLoadingPlaceholders() {
+              if(activeLoadingTable) activeLoadingTable.classList.add('hidden');
+              if(pastLoadingTable) pastLoadingTable.classList.add('hidden');
+              if(activeLoadingCards) activeLoadingCards.classList.add('hidden');
+              if(pastLoadingCards) pastLoadingCards.classList.add('hidden');
+          }
+          function showEmptyPlaceholders(activeIsEmpty = true, pastIsEmpty = true, message = null) {
+              const activeMsg = message || 'No active transactions.';
+              const pastMsg = message || 'No past transactions.';
+              if(activeEmptyTable) { activeEmptyTable.querySelector('td').textContent = activeMsg; activeEmptyTable.classList.toggle('hidden', !activeIsEmpty); }
+              if(pastEmptyTable) { pastEmptyTable.querySelector('td').textContent = pastMsg; pastEmptyTable.classList.toggle('hidden', !pastIsEmpty); }
+              if(activeEmptyCards) { activeEmptyCards.textContent = activeMsg; activeEmptyCards.classList.toggle('hidden', !activeIsEmpty); }
+              if(pastEmptyCards) { pastEmptyCards.textContent = pastMsg; pastEmptyCards.classList.toggle('hidden', !pastIsEmpty); }
+          }
+
+
+          // --- Firebase Auth State Listener ---
+          if (auth) {
+              auth.onAuthStateChanged(user => {
+                  if (user) {
+                      console.log("Dashboard: User is signed in:", user.uid);
+                      if(userInfoDiv) userInfoDiv.classList.remove('hidden');
+                      // Display name first, fallback to email
+                      if(userDisplayNameSpan) userDisplayNameSpan.textContent = user.displayName || user.email || 'User';
+                      // Check for bank details before showing dashboard content
+                      checkBankDetailsAndProceed(user);
+                  } else {
+                      console.log("Dashboard: User is signed out. Redirecting to login.");
+                      if (unsubscribeFirestore) unsubscribeFirestore(); // Stop listening
+                      window.location.href = './login.html';
+                  }
+              });
+          } else {
+              console.error("Firebase Auth not available. Redirecting to login.");
+              window.location.href = './login.html';
+          }
+
+        } catch (error) {
+            console.error("Error during DOMContentLoaded setup (Dashboard Page):", error);
+            const loadingDiv = document.getElementById('initial-loading');
+            if(loadingDiv) loadingDiv.innerHTML = '<p style="color: red;">Sorry, an error occurred while loading the dashboard.</p>';
+        }
+      }); // End DOMContentLoaded
+    </script>
+
+</body>
+</html>

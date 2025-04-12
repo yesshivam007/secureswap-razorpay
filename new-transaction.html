@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Transaction - SecureSwap</title>
+    <link rel="shortcut icon" sizes="64x64" href="./src/images/fav_logo.png" type="image/x-icon">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+      /* Lucide Icons Font Face */
+      @font-face { font-family: 'LucideIcons'; src: url(https://cdn.jsdelivr.net/npm/lucide-static@latest/font/Lucide.ttf) format('truetype'); }
+      .lucide { font-family: 'LucideIcons'; font-style: normal; font-weight: normal; font-variant: normal; text-rendering: auto; line-height: 1; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; display: inline-block; }
+      /* Smooth Scroll */
+      html { scroll-behavior: smooth; }
+      /* Dark Mode Toggle */
+      .theme-switch-wrapper { display: flex; align-items: center; gap: 8px; }
+      .theme-switch { display: inline-block; height: 24px; position: relative; width: 44px; }
+      .theme-switch input { display:none; }
+      .slider { background-color: #ccc; bottom: 0; cursor: pointer; left: 0; position: absolute; right: 0; top: 0; transition: .4s; }
+      .slider:before { background-color: #fff; bottom: 4px; content: ""; height: 16px; left: 4px; position: absolute; transition: .4s; width: 16px; }
+      input:checked + .slider { background-color: #3B82F6; }
+      input:checked + .slider:before { transform: translateX(20px); }
+      .slider.round { border-radius: 24px; } .slider.round:before { border-radius: 50%; }
+      html.dark .dark-mode-icon { color: #F59E0B; } html:not(.dark) .light-mode-icon { color: #F59E0B; }
+      /* Base body styles */
+      body { font-family: 'Inter', sans-serif; }
+      /* Form message styling */
+      .form-message { transition: opacity 0.3s ease-in-out; }
+    </style>
+
+    <script type="text/tailwindcss-config">
+      {
+        darkMode: 'class',
+        theme: { extend: { fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'], }, } }
+      }
+    </script>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+    <script>
+      (function() {
+        try {
+          const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          const savedTheme = localStorage.getItem('theme');
+          if (savedTheme === 'dark' || (!savedTheme && prefersDark)) { document.documentElement.classList.add('dark'); }
+          else { document.documentElement.classList.remove('dark'); }
+        } catch (e) { console.error("Error applying initial theme:", e); }
+      })();
+    </script>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-200 antialiased transition-colors duration-300 min-h-screen flex flex-col">
+
+    <header class="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-50 transition-colors duration-300">
+        <nav class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <a href="/" class="text-2xl font-bold text-blue-600 dark:text-blue-500">SecureSwap</a>
+             <div class="flex space-x-4 items-center">
+                <div id="user-info" class="text-sm text-gray-600 dark:text-gray-300 hidden items-center">
+                    <span class="lucide mr-1 text-lg my-[-6px]"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+  <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+</svg>
+</span> 
+ <span id="user-display-name" class="font-medium mr-3">User</span> <button id="logout-button" class="text-red-600 dark:text-red-400 hover:underline focus:outline-none text-sm"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-log-out-icon lucide-log-out"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg></button>
+                </div>
+                
+            </div>
+        </nav>
+    </header>
+
+    <main class="flex-grow container mx-auto px-6 py-8">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6 text-center">Start a New SecureSwap Transaction</h1>
+        <form id="new-transaction-form" class="max-w-xl mx-auto bg-white dark:bg-gray-800 p-8 rounded-lg shadow space-y-6">
+            <fieldset><legend class="text-base font-medium text-gray-900 dark:text-white mb-2">What is your role?</legend><div class="flex items-center space-x-6"><div class="flex items-center"><input id="role-buyer" name="userRole" type="radio" value="buyer" required class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:checked:bg-blue-500"><label for="role-buyer" class="ml-3 block text-sm font-medium text-gray-700 dark:text-gray-300">I am the Buyer</label></div><div class="flex items-center"><input id="role-seller" name="userRole" type="radio" value="seller" required class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:checked:bg-blue-500"><label for="role-seller" class="ml-3 block text-sm font-medium text-gray-700 dark:text-gray-300">I am the Seller</label></div></div></fieldset>
+            <div><label for="other-party-email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Other Party's Email</label><input type="email" name="otherPartyEmail" id="other-party-email" required autocomplete="email" class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-700 dark:text-white" placeholder="Enter their email"></div>
+            <div><label for="item-description" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Item/Service Description</label><textarea id="item-description" name="itemDescription" rows="3" required class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-700 dark:text-white" placeholder="e.g., 'iPhone 14 Pro Max 256GB', 'Logo Design Service'"></textarea></div>
+            <div><label for="amount" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Amount (INR)</label><div class="mt-1 relative rounded-md shadow-sm"><div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"><span class="text-gray-500 sm:text-sm">₹</span></div><input type="number" name="amount" id="amount" required min="1" step="0.01" class="block w-full pl-7 pr-12 py-2 border border-gray-300 dark:border-gray-600 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-700 dark:text-white" placeholder="0.00"><div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none"><span class="text-gray-500 sm:text-sm" id="currency">INR</span></div></div></div>
+            <div><label for="terms" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Optional: Terms</label><textarea id="terms" name="terms" rows="2" class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-700 dark:text-white" placeholder="(e.g., condition, delivery timeline)"></textarea></div>
+            <div id="transaction-message" class="form-message text-sm hidden mt-4 text-center"></div>
+            <div class="pt-2"><button type="submit" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800">Initiate SecureSwap</button></div>
+             <p class="text-xs text-center text-gray-500 dark:text-gray-400">By initiating, you agree to SecureSwap's Terms of Service.</p>
+        </form>
+    </main>
+
+     <footer class="bg-gray-100 dark:bg-gray-800 mt-12">
+       <div class="container mx-auto px-6 py-4 text-center text-gray-600 dark:text-gray-400 text-sm">&copy; <span id="copyright-year">2024</span> SecureSwap. All rights reserved.</div>
+   </footer>
+
+    <script>
+      'use strict';
+      // --- Firebase Config ---
+      // PASTE YOUR ACTUAL FIREBASE CONFIG OBJECT HERE!
+      const firebaseConfig = {
+  apiKey: "AIzaSyCWNCws7n00a4IjQ_X08tXUxdbUx4P5XtI",
+  authDomain: "ss-local-4917d.firebaseapp.com",
+  projectId: "ss-local-4917d",
+  storageBucket: "ss-local-4917d.firebasestorage.app",
+  messagingSenderId: "1045208651336",
+  appId: "1:1045208651336:web:3dfe51cf192488aaa36a7d",
+  measurementId: "G-CHR2TXTNCN"
+};
+
+      // --- Initialize Firebase ---
+      let app, auth, db;
+      try {
+        if (typeof firebase === 'undefined' || !firebase.initializeApp) { throw new Error("Firebase SDK not loaded correctly."); }
+        app = firebase.initializeApp(firebaseConfig);
+        auth = firebase.auth();
+        db = firebase.firestore();
+        console.log("Firebase Initialized Successfully (New Transaction Page).");
+      } catch (e) {
+        console.error("FIREBASE INIT FAILED:", e);
+        document.body.innerHTML = '<div style="padding: 20px; text-align: center; color: red; background-color: white;">CRITICAL ERROR: Could not initialize Firebase. Check console and config.</div>';
+        throw e; // Stop script
+      }
+
+      // --- Wait for DOM Ready ---
+      document.addEventListener('DOMContentLoaded', () => {
+        console.log("DOM Loaded (New Transaction Page).");
+        let currentUser = null;
+
+        try {
+          // --- Elements ---
+          const themeToggle = document.getElementById('checkbox');
+          const htmlElement = document.documentElement;
+          const yearSpan = document.getElementById('copyright-year');
+          const userInfoDiv = document.getElementById('user-info');
+          const userDisplayNameSpan = document.getElementById('user-display-name'); // Updated ID reference
+          const logoutButton = document.getElementById('logout-button');
+          const transactionForm = document.getElementById('new-transaction-form');
+          const messageDiv = document.getElementById('transaction-message');
+
+          // --- Theme Toggle ---
+          function setTheme(isDark) { if (isDark) { htmlElement.classList.add('dark'); } else { htmlElement.classList.remove('dark'); } localStorage.setItem('theme', isDark ? 'dark' : 'light'); if (themeToggle) themeToggle.checked = isDark; }
+          const isInitiallyDark = htmlElement.classList.contains('dark');
+          if (themeToggle) { themeToggle.checked = isInitiallyDark; themeToggle.addEventListener('change', () => setTheme(themeToggle.checked)); }
+
+          // --- Copyright Year ---
+          if (yearSpan) { yearSpan.textContent = new Date().getFullYear(); }
+
+          // --- Logout Button ---
+          if (logoutButton && auth) {
+            logoutButton.addEventListener('click', () => {
+              auth.signOut().then(() => { window.location.href = './login.html'; }).catch(error => console.error('Sign out error:', error));
+            });
+          }
+
+          // --- Helper to show messages ---
+          function showMessage(msg, isError = true) { if (messageDiv) { messageDiv.textContent = msg; messageDiv.classList.remove('hidden'); if (isError) { messageDiv.className = 'form-message text-sm mt-4 text-center text-red-500 dark:text-red-400'; } else { messageDiv.className = 'form-message text-sm mt-4 text-center text-green-600 dark:text-green-400'; } } else { alert(msg); } }
+
+          // --- Firebase Auth State Listener ---
+          if (auth) {
+              auth.onAuthStateChanged(user => {
+                  if (user) {
+                      currentUser = user;
+                      console.log("New Transaction: User is signed in:", user.email);
+                      if(userInfoDiv) userInfoDiv.classList.remove('hidden');
+                      // *** UPDATE DISPLAY NAME ***
+                      if(userDisplayNameSpan) userDisplayNameSpan.textContent = user.displayName || user.email.split('@')[0] || 'User'; // Use name, fallback to email prefix or 'User'
+                  } else {
+                      console.log("New Transaction: User is signed out. Redirecting to login.");
+                      window.location.href = './login.html';
+                  }
+              });
+          } else {
+              console.error("Firebase Auth not available. Redirecting to login.");
+              window.location.href = './login.html';
+          }
+
+          // --- New Transaction Form Handler ---
+          if (transactionForm && db) {
+              transactionForm.addEventListener('submit', async (event) => {
+                  event.preventDefault();
+                  if (!currentUser) { showMessage("You must be logged in to create a transaction."); return; }
+                  if(messageDiv) messageDiv.classList.add('hidden');
+
+                  const formData = new FormData(transactionForm);
+                  const userRole = formData.get('userRole');
+                  const otherPartyEmail = formData.get('otherPartyEmail').trim();
+                  const itemDescription = formData.get('itemDescription').trim();
+                  const amount = parseFloat(formData.get('amount'));
+                  const terms = formData.get('terms').trim();
+                  const initiatorEmail = currentUser.email;
+
+                  if (!userRole || !otherPartyEmail || !itemDescription || isNaN(amount) || amount <= 0) { showMessage("Please fill in all required fields (Role, Other Party Email, Description, Amount)."); return; }
+                  if (otherPartyEmail.toLowerCase() === initiatorEmail.toLowerCase()) { showMessage("You cannot start a transaction with yourself."); return; }
+
+                  let buyerEmail, sellerEmail;
+                  if (userRole === 'buyer') { buyerEmail = initiatorEmail; sellerEmail = otherPartyEmail; }
+                  else { buyerEmail = otherPartyEmail; sellerEmail = initiatorEmail; }
+
+                  const transactionData = {
+                      initiatorEmail: initiatorEmail,
+                      buyerEmail: buyerEmail.toLowerCase(),
+                      sellerEmail: sellerEmail.toLowerCase(),
+                      itemDescription: itemDescription,
+                      amount: amount,
+                      currency: 'INR',
+                      terms: terms || null,
+                      status: 'pending_acceptance', // Start with acceptance step
+                      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                      buyerAccepted: userRole === 'buyer',
+                      sellerAccepted: userRole === 'seller',
+                      buyerConfirmedPayment: false,
+                      sellerConfirmedShipment: false,
+                      buyerConfirmedReceipt: false,
+                      disputeRaised: false,
+                  };
+
+                  console.log("Attempting to create transaction:", transactionData);
+
+                  try {
+                      const submitButton = transactionForm.querySelector('button[type="submit"]');
+                      if(submitButton) submitButton.disabled = true; submitButton.textContent = 'Initiating...';
+
+                      const docRef = await db.collection("transactions").add(transactionData);
+                      console.log("Transaction successfully created with ID: ", docRef.id);
+                      showMessage("SecureSwap initiated! Waiting for other party to accept.", false);
+                      setTimeout(() => {
+                          window.location.href = `./transaction-view.html?id=${docRef.id}`;
+                      }, 2000);
+
+                  } catch (error) {
+                      console.error("Error adding transaction to Firestore: ", error);
+                      showMessage("Failed to initiate transaction. Please try again.");
+                       const submitButton = transactionForm.querySelector('button[type="submit"]');
+                       if(submitButton) { submitButton.disabled = false; submitButton.textContent = 'Initiate SecureSwap'; }
+                  }
+              });
+          } else if (!transactionForm) { console.warn("New transaction form (#new-transaction-form) not found."); }
+
+        } catch (error) {
+            console.error("Error during DOMContentLoaded setup (New Transaction Page):", error);
+        }
+      }); // End DOMContentLoaded
+    </script>
+
+</body>
+</html>
